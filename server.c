@@ -6,7 +6,8 @@ int accpt(SOCKET servsock)
 {
     struct sockaddr their_addr; // connector's address information
     socklen_t sin_size;
-    char connector[INET_ADDRSTRLEN];
+    int length = 100;
+    char connector[length];
 
     SOCKET connsock;
 
@@ -17,9 +18,11 @@ int accpt(SOCKET servsock)
             PWASAERR("accept error %u\n");
             return -1;
         }
-
-        if (WSAAddressToStringA(&their_addr, INET_ADDRSTRLEN, NULL, connector, (LPDWORD) INET_ADDRSTRLEN))
-            PWASAERR("WSAAddressToStringA error %u\n(skip)");
+        int err = 0;
+        if ((err = WSAAddressToString(&their_addr, sizeof(struct sockaddr), NULL, connector, (LPDWORD) &length))) {
+            PWASAERR("WSAAddressToStringA error %u\n(skip)\n");
+            wprintf(L"server: error %i\n", err);
+        }
         else
             wprintf(L"server: got connection from %s\n", connector);
 
@@ -27,7 +30,7 @@ int accpt(SOCKET servsock)
 
         wprintf(L"sending data...\n");
 
-        if (send(connsock, data, sizeof(data) / (sizeof(char)), 0)) {
+        if (send(connsock, data, sizeof(data) / (sizeof(char)), 0) != sizeof(data) / (sizeof(char))) {
             PWASAERR("send error %u\n");
             closesocket(connsock);
             return -1;
@@ -39,7 +42,7 @@ int accpt(SOCKET servsock)
     }
 
     closesocket(connsock);
-    return 1;
+    return 0;
 }
 
 int run_server()
@@ -100,7 +103,6 @@ int run_server()
     }
 
     wprintf(L"server: waiting for connections...\n");
-
 
     int res = accpt(sockfd);
 

@@ -5,5 +5,4 @@
 #include "server.h"
 #include "client.h"
 
-#define PRERR(str) fprintf(stderr, ""str"")
 #endif //NETWORKS_SIMPLENETW_H

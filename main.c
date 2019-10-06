@@ -3,7 +3,7 @@
 int main(int argc, char *argv[]) {
 
     if (argc != 2) {
-        PRERR("incorrect number of arguments\n");
+        perror("incorrect number of arguments\n");
         return -1;
     }
 
@@ -14,8 +14,10 @@ int main(int argc, char *argv[]) {
     } else if (argv[1][0] == 'c') {
         res = send_request();
     }
-    if (res < 0)
+    if (res < 0) {
+        printf("error");
         return -1;
+    }
     
     printf("END\n");
 
