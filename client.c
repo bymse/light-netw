@@ -1,69 +1,105 @@
 #include "client.h"
 
-#define MAXDATASIZE 100 // max number of bytes we can get at once 
+error_code gettarg_addr(const char *target_addr, const char *port, addrinfo **target_addrinfo);
 
-int send_request() {
+error_code connect_to(addrinfo *target_addrinfo, SOCKET socketd);
+
+error_code recive(SOCKET sockd, FILE *data);
+
+void print_addr(struct sockaddr *addr);
+
+error_code request_data(const char *target_addr, const char *port, FILE *data) {
     WSADATA wsaData;
-    STARTUP(&wsaData);
-    int numbytes;
-    SOCKET sockfd = INVALID_SOCKET;
-    char buf[MAXDATASIZE];
-    struct addrinfo hints, *servinfo, *p;
-    int rv;
-    char server[100];
+    error_code oper_res;
 
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_CANONNAME;
-
-    if ((rv = getaddrinfo("localhost", PORT, &hints, &servinfo)) != 0) {
-        //fprintf(stderr, "getaddrinfo: %d\n", rv);
-        PWASAERR("getaddrinfo: %d\n");
-        CLEANUP(servinfo);
-        return -1;
+    if ((oper_res = wsa_start(&wsaData, CLIENT_PREFIX)) != Noerr) {
+        return oper_res;
     }
 
-    // loop through all the results and connect to the first we can
-    for (p = servinfo; p != NULL; p = p->ai_next) {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype,
-                             p->ai_protocol)) == -1) {
-            PWASAERR("socket error %u\n(keep trying)\n");
+    SOCKET sockd = INVALID_SOCKET; // NOLINT(hicpp-signed-bitwise)
+    addrinfo *target_addrinfo;
+
+    if ((oper_res = gettarg_addr(target_addr, port, &target_addrinfo)) != Noerr) {
+        CLEANUP(target_addrinfo);
+        return oper_res;
+    }
+
+    if ((oper_res = connect_to(target_addrinfo, sockd)) != Noerr) {
+        CLEANUP(target_addrinfo, sockd);
+        return oper_res;
+    }
+
+    oper_res = recive(sockd, data);
+
+    CLEANUP(target_addrinfo, sockd);
+    return oper_res;
+}
+
+error_code gettarg_addr(const char *target_addr, const char *port, addrinfo **target_addrinfo) {
+    addrinfo hints;
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_INET6;
+    hints.ai_socktype = SOCK_STREAM;
+
+    //todo: check without it
+    hints.ai_flags = AI_CANONNAME;
+
+    if (getaddrinfo(target_addr, port, &hints, target_addrinfo) != 0) {
+        PRINT_CLIENT_WSA_ERR("getaddrinfo %u\n");
+        return Addrerr;
+    }
+    return Noerr;
+}
+
+error_code connect_to(addrinfo *target_addrinfo, SOCKET socketd) {
+    addrinfo *p;
+
+    for (p = target_addrinfo; p != NULL; p = p->ai_next) {
+        if ((socketd = socket(p->ai_family, p->ai_socktype,
+                              p->ai_protocol)) == -1) {
+            PRINT_CLIENT_WSA_ERR("socket %u\n\t(keep trying)\n");
             continue;
         }
 
-        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            PWASAERR("client: connect");
-            close(sockfd);
+        if (connect(socketd, p->ai_addr, p->ai_addrlen) == -1) {
+            PRINT_CLIENT_WSA_ERR("connect %u\n\t(keep trying)\n");
+            close(socketd);
             continue;
         }
-
         break;
     }
 
     if (p == NULL) {
-        wprintf(L"client: failed to bind\n");
-        CLEANUP(servinfo, sockfd);
-        return -1;
+        PRINT_CLIENT(L"socket connect fail\n");
+        return Sockerr;
     }
 
-    if (WSAAddressToStringA(p->ai_addr, sizeof(struct sockaddr), NULL, server, (LPDWORD) 100))
-        PWASAERR("WSAAddressToStringA error %u\n(skip)\n");
-    else
-        wprintf(L"client: connecting to %s\n", p->ai_canonname);
-
-
-    if ((numbytes = recv(sockfd, buf, MAXDATASIZE - 1, 0)) == -1) {
-        CLEANUP(servinfo, sockfd);
-        return -1;
-    }
-
-    buf[numbytes] = '\0';
-
-    printf("client: received '%s'\n", buf);
-
-    CLEANUP(servinfo, sockfd);
-
-    return 0;
+    print_addr(p->ai_addr);
+    return Noerr;
 }
 
+error_code recive(SOCKET sockd, FILE *data) {
+    int count;
+    char buf[MAX_PACKET_S + 1];
+
+    if ((count = recv(sockd, buf, MAX_PACKET_S, 0)) < 0) {
+        PRINT_CLIENT_WSA_ERR(L"recv %u\n");
+        return Recverr;
+    }
+
+    PRINT_CLIENT_FORMAT("%u bytes were recived");
+
+    buf[count] = '\0';
+
+    fwrite(buf, sizeof(char), count + 1, data);
+    return Noerr;
+}
+
+void print_addr(struct sockaddr *addr) {
+    unsigned long name_leng = INET6_ADDRSTRLEN;
+    char targ_name[name_leng];
+    if (WSAAddressToStringA(addr, sizeof(struct sockaddr), NULL, targ_name, &name_leng) != 0)
+        PRINT_WSA_ERR("WSAAddressToStringA %u\n\t(skip)\n");
+    else
+    PRINT_CLIENT_FORMAT(L"connecting to %s\n", targ_name);
+}

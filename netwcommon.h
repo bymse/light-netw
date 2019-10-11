@@ -19,19 +19,27 @@
 #include <ws2tcpip.h>
 #include <signal.h>
 
-#define PORT "3490"  // the port users will be connecting to
 
-#define STARTUP(wsaData)                                            \
-        do{                                                         \
-            int __res = 0;                                          \
-            if ( (__res = WSAStartup(                               \
-                    CUST_MAKEWORD(2,2),                             \
-                    (WSADATA*)(wsaData)) != NO_ERROR)) {            \
-                wprintf(L"WSAStartup error: %d\n", __res);          \
-            return 1;                                               \
-            }}while(0)                                              \
+#define DEFAULT_PORT "3490"
+#define MAX_PACKET_S 1300
 
-#define _CLEANUP0() WSACleanup(); printf("cleanup done\r\n")
+typedef struct addrinfo addrinfo;
+typedef struct WSAData WSAData;
+
+enum error_code {
+    WSAStarterr = -10,
+    Addrerr = -9,
+    Sockerr = -8,
+    Recverr = -7,
+    Noerr = 0
+};
+typedef enum error_code error_code;
+
+error_code wsa_start(WSAData *wsaData, const char *prefix);
+
+#define GET_OVERRIDE(_1, _2, _3, _4, NAME, ...) NAME
+
+#define _CLEANUP0() WSACleanup(); wprintf(L"cleanup done\r\n")
 #define _CLEANUP1(addr)                     \
     do{if((addr) != NULL)                   \
         freeaddrinfo((void*)((addr)));      \
@@ -54,12 +62,11 @@
     }while(0)                               \
 
 #define CLEANUP(...) GET_OVERRIDE("ignored", ##__VA_ARGS__, _CLEANUP3, _CLEANUP2, _CLEANUP1, _CLEANUP0)(__VA_ARGS__)
-#define PWASAERR(format_str) wprintf(L""format_str"", WSAGetLastError())
 
-#define CUST_MAKEWORD(a, b)    ((WORD)(((unsigned)(a))|(((unsigned)(b))<<8u)))
+#define PRINT_FORMAT(format_str, ...) wprintf(L""format_str"", __VA_ARGS__);
 
-#define GET_OVERRIDE(_1, _2, _3, _4, NAME, ...) NAME
+#define PRINT_WSA_ERR(format_str) wprintf(L""format_str"", WSAGetLastError())
 
-typedef struct addrinfo addrinfo;
+
 
 #endif

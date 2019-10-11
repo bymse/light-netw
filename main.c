@@ -1,5 +1,6 @@
 #include "simplenetw.h"
 
+
 int main(int argc, char *argv[]) {
 
     if (argc != 2) {
@@ -12,7 +13,7 @@ int main(int argc, char *argv[]) {
     if (argv[1][0] == 's') {
         res = run_server();
     } else if (argv[1][0] == 'c') {
-        res = send_request();
+        res = request_data();
     }
     if (res < 0) {
         printf("error");
