@@ -31,11 +31,20 @@ enum error_code {
     Addrerr = -9,
     Sockerr = -8,
     Recverr = -7,
+    Binderr = -6,
+    Listenerr = -5,
+    Accepterr = -4,
+    Senderr = -4,
     Noerr = 0
 };
 typedef enum error_code error_code;
 
-error_code wsa_start(WSAData *wsaData, const char *prefix);
+error_code wsa_start(const char *prefix);
+
+error_code
+getaddr_for(const char *target_addr, const char *port, const char *prefix, addrinfo *hints, addrinfo *target_addrinfo);
+
+void print_addr(struct sockaddr *addr, const char *prefix);
 
 #define GET_OVERRIDE(_1, _2, _3, _4, NAME, ...) NAME
 
@@ -63,9 +72,9 @@ error_code wsa_start(WSAData *wsaData, const char *prefix);
 
 #define CLEANUP(...) GET_OVERRIDE("ignored", ##__VA_ARGS__, _CLEANUP3, _CLEANUP2, _CLEANUP1, _CLEANUP0)(__VA_ARGS__)
 
-#define PRINT_FORMAT(format_str, ...) wprintf(L""format_str"", __VA_ARGS__);
+#define PRINT_FORMAT(format_str, ...) wprintf(L""format_str"", #__VA_ARGS__)
 
-#define PRINT_WSA_ERR(format_str) wprintf(L""format_str"", WSAGetLastError())
+#define PRINT_WSA_ERR(format_str) PRINT_FORMAT(L""format_str"", WSAGetLastError())
 
 
 

@@ -1,89 +1,69 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "hicpp-signed-bitwise"
+
 #include "server.h"
 
-#define BACKLOG 10   // how many pending connections queue will hold
+error_code bind_to(addrinfo *available_addrs, SOCKET *sockd);
 
-int accpt(SOCKET servsock)
-{
-    struct sockaddr their_addr; // connector's address information
-    socklen_t sin_size;
-    int length = 100;
-    char connector[length];
+error_code start_listen(SOCKET sockd);
 
-    SOCKET connsock;
+error_code response_with_data(SOCKET sockd, FILE *data);
 
-    while (1) {  // main accept() loop
-        sin_size = sizeof their_addr;
-        connsock = accept(servsock, &their_addr, &sin_size);
-        if (connsock == -1) {
-            PWASAERR("accept error %u\n");
-            return -1;
-        }
-        int err = 0;
-        if ((err = WSAAddressToString(&their_addr, sizeof(struct sockaddr), NULL, connector, (LPDWORD) &length))) {
-            PWASAERR("WSAAddressToStringA error %u\n(skip)\n");
-            wprintf(L"server: error %i\n", err);
-        }
-        else
-            wprintf(L"server: got connection from %s\n", connector);
+error_code get_connection(SOCKET sockd, SOCKET *incom_sockd, sockaddr *incom_addr);
 
-        char data[] = "Hello, world!";
+error_code send_data(SOCKET incom_sockd, FILE *data);
 
-        wprintf(L"sending data...\n");
+int run_server(const char *port, FILE *data) {
+    error_code operes;
 
-        if (send(connsock, data, sizeof(data) / (sizeof(char)), 0) != sizeof(data) / (sizeof(char))) {
-            PWASAERR("send error %u\n");
-            closesocket(connsock);
-            return -1;
-        }
-
-        wprintf(L"sending successe\n");
-        closesocket(connsock);
-        break;
+    if ((operes = wsa_start(SERVER_PREFIX)) != Noerr) {
+        return operes;
     }
 
-    closesocket(connsock);
-    return 0;
+    addrinfo *target_addrinfo = NULL;
+    SOCKET sockd = INVALID_SOCKET;
+
+    if ((operes = GETADDR_FOR_BIND(port, target_addrinfo)) != Noerr) {
+        CLEANUP(target_addrinfo);
+        return operes;
+    }
+
+    if ((operes = bind_to(target_addrinfo, &sockd)) != Noerr) {
+        CLEANUP(target_addrinfo, sockd);
+        return operes;
+    }
+
+    if ((operes = start_listen(sockd)) != Noerr) {
+        CLEANUP(target_addrinfo, sockd);
+        return operes;
+    }
+
+    PRINT_SERVER(L"waiting for connection \n");
+    operes = response_with_data(sockd, data);
+
+    CLEANUP(target_addrinfo, sockd);
+    return operes;
 }
 
-int run_server()
-{
-    WSADATA wsaData;
-    STARTUP(&wsaData);
-
-    struct addrinfo hints, *serv_info, *p;
-    SOCKET sockfd = INVALID_SOCKET;
-
-    int yes = 1;
-
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE; // use my IP
-
-    if ((getaddrinfo(NULL, PORT, &hints, &serv_info)) != 0) {
-        PWASAERR("getaddrinfo: %s\n");
-        CLEANUP(serv_info);
-        return -1;
-    }
-
-    // loop through all the results and bind to the first we can
-    for (p = serv_info; p != NULL; p = p->ai_next) {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype,
-                             p->ai_protocol)) == -1) {
-            PWASAERR("socket error %u\n(keep trying)\n");
+error_code bind_to(addrinfo *available_addrs, SOCKET *sockd) {
+    addrinfo *p;
+    char yes[] = {1};
+    for (p = available_addrs; p != NULL; p = p->ai_next) {
+        if ((*sockd = socket(p->ai_family, p->ai_socktype,
+                             p->ai_protocol)) == INVALID_SOCKET) {
+            PRINT_SERVER_WSA_ERR("socket %u\n\t(keep trying)\n");
             continue;
         }
 
-        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *) &yes,
-                       sizeof(int)) == -1) {
-            PWASAERR(L"setsockopt error %u\n");
-            CLEANUP(serv_info);
-            return -1;
+        if (setsockopt(*sockd, SOL_SOCKET, SO_REUSEADDR, yes,
+                       sizeof(char)) == SOCKET_ERROR) {
+            PRINT_SERVER_WSA_ERR(L"setsockopt %u\n");
+            return Sockerr;
         }
 
-        if (bind(sockfd, p->ai_addr, p->ai_addrlen)) {
-            close(sockfd);
-            PWASAERR("bind error %u\n(keep trying)\n");
+        if (bind(*sockd, p->ai_addr, p->ai_addrlen)) {
+            close(*sockd);
+            PRINT_SERVER_WSA_ERR("bind %u\n(keep trying)\n");
             continue;
         }
 
@@ -91,22 +71,62 @@ int run_server()
     }
 
     if (p == NULL) {
-        wprintf(L"server: failed to bind\n");
-        CLEANUP(serv_info, sockfd);
-        return -1;
+        PRINT_SERVER(L"socket connect fail\n");
+        return Binderr;
     }
-
-    if (listen(sockfd, BACKLOG) == -1) {
-        PWASAERR("listen error %u\n");
-        CLEANUP(serv_info, sockfd);
-        return -1;
-    }
-
-    wprintf(L"server: waiting for connections...\n");
-
-    int res = accpt(sockfd);
-
-    CLEANUP(serv_info, sockfd);
-
-    return res;
+    return Noerr;
 }
+
+error_code response_with_data(SOCKET sockd, FILE *data) {
+    sockaddr incom_addr;
+    SOCKET incom_sock;
+    error_code operes;
+
+    if ((operes = get_connection(sockd, &incom_sock, &incom_addr)) != Noerr) {
+        closesocket(incom_sock);
+        return operes;
+    }
+
+    operes = send_data(incom_sock, data);
+    closesocket(incom_sock);
+    return operes;
+}
+
+error_code get_connection(SOCKET sockd, SOCKET *incom_sockd, sockaddr *incom_addr) {
+    socklen_t incomsock_len = sizeof(sockaddr);;
+
+    if ((*incom_sockd = accept(sockd, incom_addr, &incomsock_len)) == INVALID_SOCKET) {
+        PRINT_SERVER_WSA_ERR("accept %u\n");
+        return Accepterr;
+    }
+
+    print_addr(incom_addr, SERVER_PREFIX);
+    return Noerr;
+}
+
+error_code start_listen(SOCKET sockd) {
+
+    if (listen(sockd, BACKLOG) == SOCKET_ERROR) {
+        PRINT_SERVER_WSA_ERR("listen %u\n");
+        return Listenerr;
+    }
+
+    return Noerr;
+}
+
+error_code send_data(SOCKET incom_sockd, FILE *data) {
+    char data_buf[MAX_PACKET_S];
+    size_t count = fread(data_buf, sizeof(char), MAX_PACKET_S, data);
+
+    PRINT_SERVER(L"sending data start\n");
+
+    if (send(incom_sockd, data_buf, count, 0) == SOCKET_ERROR) {
+        PRINT_SERVER_WSA_ERR("send %u\n");
+        return Senderr;
+    }
+
+    PRINT_SERVER(L"sending data end\n");
+    return Noerr;
+}
+
+#pragma clang diagnostic pop
