@@ -1,26 +1,33 @@
 #include "simplenetw.h"
 
-
 int main(int argc, char *argv[]) {
-
-    if (argc != 2) {
-        perror("incorrect number of arguments\n");
-        return -1;
+    netwopts options;
+    error_code operes = 0;
+    if ((operes = parse_flags(argc, argv, &options)) != Noerr) {
+        return operes;
     }
 
-    int res = 0;
-    
-    if (argv[1][0] == 's') {
-        res = run_server();
-    } else if (argv[1][0] == 'c') {
-        res = request_data();
-    }
-    if (res < 0) {
-        printf("error");
-        return -1;
-    }
-    
-    printf("END\n");
+    if (options.port == NULL)
+        options.port = DEFAULT_PORT;
 
-    return 0;
+    switch (options.type) {
+        case Server_dirshare:
+        case Server_message:
+            operes = run_server(&options);
+            break;
+
+        case Client_filereq:
+        case Client_message:
+            operes = run_client(&options);
+            break;
+
+        case Invalid_type:
+        case _run_type_num:
+            PRINT_FORMAT("invalid run type: %i \n", options.type);
+            break;
+    }
+
+    PRINT_FORMAT("\n--> result code: %i <--\n", operes);
+
+    return operes;
 }

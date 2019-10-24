@@ -7,15 +7,15 @@ error_code wsa_start(const char *prefix) {
     int err = 0;
     if ((err = WSAStartup(CUST_MAKEWORD(2, 2), &wsaData))
         != NO_ERROR) {
-        wprintf(L"%s: WSAStartup %d\n", prefix, err);
+        PRINT_FORMAT("%s: WSAStartup %d\n", prefix, err);
         return WSAStarterr;
     }
     return Noerr;
 }
 
-error_code
-getaddr_for(const char *target_addr, const char *port, const char *prefix, addrinfo *hints, addrinfo *target_addrinfo) {
-    if (getaddrinfo(target_addr, port, hints, &target_addrinfo) != 0) {
+error_code getaddr_for(const char *target_addr, const char *port, const char *prefix, addrinfo *hints,
+                       addrinfo **target_addrinfo) {
+    if (getaddrinfo(target_addr, port, hints, target_addrinfo) != 0) {
         PRINT_FORMAT("%s", prefix);
         PRINT_WSA_ERR("getaddrinfo %u\n");
         return Addrerr;
@@ -23,12 +23,13 @@ getaddr_for(const char *target_addr, const char *port, const char *prefix, addri
     return Noerr;
 }
 
-void print_addr(struct sockaddr *addr, const char *prefix) {
+void print_addr(struct sockaddr_storage *addr, const char *prefix) {
     unsigned long name_leng = INET6_ADDRSTRLEN;
     char targ_name[name_leng];
-    if (WSAAddressToStringA(addr, sizeof(struct sockaddr), NULL, targ_name, &name_leng) != 0) {
+    if (WSAAddressToStringA((struct sockaddr *) addr, sizeof(struct sockaddr_storage), NULL, targ_name, &name_leng) !=
+        0) {
         PRINT_FORMAT("%s", prefix);
-        PRINT_WSA_ERR("getaddrinfo %u\n");
+        PRINT_WSA_ERR("WSAAddressToStringA error %u\n");
     } else
-    PRINT_FORMAT(L"%s connecting to %s\n", prefix, targ_name);
+        PRINT_FORMAT("%s connecting to %s\n", prefix, targ_name);
 }

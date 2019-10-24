@@ -4,7 +4,13 @@ error_code connect_to(addrinfo *target_addrinfo, SOCKET *socketd);
 
 error_code recive(SOCKET sockd, FILE *data);
 
-error_code request_data(const char *target_addr, const char *port, FILE *data) {
+
+error_code run_client(const netwopts *options) {
+    if (options == NULL) {
+        PRINT_CLIENT("inalid options");
+        return Opterr;
+    }
+
     error_code oper_res;
 
     if ((oper_res = wsa_start(CLIENT_PREFIX)) != Noerr) {
@@ -14,7 +20,8 @@ error_code request_data(const char *target_addr, const char *port, FILE *data) {
     SOCKET sockd = INVALID_SOCKET; // NOLINT(hicpp-signed-bitwise)
     addrinfo *target_addrinfo = NULL;
 
-    if ((oper_res = GETADDR_FOR_CONNECT(target_addr, port, target_addrinfo)) != Noerr) {
+    if ((oper_res = GETADDR_FOR_CONNECT(options->hostname, options->port,
+                                        &target_addrinfo)) != Noerr) {
         CLEANUP(target_addrinfo);
         return oper_res;
     }
@@ -24,11 +31,12 @@ error_code request_data(const char *target_addr, const char *port, FILE *data) {
         return oper_res;
     }
 
-    oper_res = recive(sockd, data);
+    oper_res = recive(sockd,);
 
     CLEANUP(target_addrinfo, sockd);
     return oper_res;
 }
+
 
 error_code connect_to(addrinfo *target_addrinfo, SOCKET *socketd) {
     addrinfo *p;
@@ -48,7 +56,7 @@ error_code connect_to(addrinfo *target_addrinfo, SOCKET *socketd) {
     }
 
     if (p == NULL) {
-        PRINT_CLIENT(L"socket connect fail\n");
+        PRINT_CLIENT("socket connect fail\n");
         return Sockerr;
     }
 
@@ -58,18 +66,16 @@ error_code connect_to(addrinfo *target_addrinfo, SOCKET *socketd) {
 
 error_code recive(SOCKET sockd, FILE *data) {
     int count;
-    char buf[MAX_PACKET_S + 1];
+    char buf[MAX_PACKET_S];
 
     if ((count = recv(sockd, buf, MAX_PACKET_S, 0)) < 0) {
-        PRINT_CLIENT_WSA_ERR(L"recv %u\n");
+        PRINT_CLIENT_WSA_ERR("recv %u\n");
         return Recverr;
     }
 
-    PRINT_CLIENT_FORMAT("%u bytes were recived");
+    PRINT_CLIENT_FORMAT("%u bytes were recived\n", count);
 
-    buf[count] = '\0';
-
-    fwrite(buf, sizeof(char), count + 1, data);
+    fwrite(buf, sizeof(char), count, data);
     return Noerr;
 }
 

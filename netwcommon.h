@@ -19,14 +19,17 @@
 #include <ws2tcpip.h>
 #include <signal.h>
 
-
 #define DEFAULT_PORT "3490"
 #define MAX_PACKET_S 1300
 
 typedef struct addrinfo addrinfo;
 typedef struct WSAData WSAData;
 
-enum error_code {
+typedef enum error_code {
+    Notyerr = -10000,
+    Opterr = -100,
+    Patherr = -99,
+    Filerr = -98,
     WSAStarterr = -10,
     Addrerr = -9,
     Sockerr = -8,
@@ -34,21 +37,55 @@ enum error_code {
     Binderr = -6,
     Listenerr = -5,
     Accepterr = -4,
-    Senderr = -4,
+    Senderr = -3,
     Noerr = 0
+} error_code;
+
+typedef enum run_type {
+    Invalid_type,
+    Server_dirshare,
+    Server_message,
+    Client_filereq,
+    Client_message,
+
+    _run_type_num
+} runtype;
+
+char const *const run_type_names[_run_type_num] = {
+        [Invalid_type] = "i",
+        [Server_dirshare] = "sd",
+        [Server_message] = "sm",
+        [Client_filereq] = "cf",
+        [Client_message] = "cm",
 };
-typedef enum error_code error_code;
+
+
+typedef struct netwopts {
+    char *port;
+    char *hostname;
+    char *datapath;
+    runtype type;
+} netwopts;
 
 error_code wsa_start(const char *prefix);
 
 error_code
-getaddr_for(const char *target_addr, const char *port, const char *prefix, addrinfo *hints, addrinfo *target_addrinfo);
+getaddr_for(const char *target_addr, const char *port, const char *prefix, addrinfo *hints, addrinfo **target_addrinfo);
 
-void print_addr(struct sockaddr *addr, const char *prefix);
+void print_addr(struct sockaddr_storage *addr, const char *prefix);
+
+
+//region MACRO
 
 #define GET_OVERRIDE(_1, _2, _3, _4, NAME, ...) NAME
 
-#define _CLEANUP0() WSACleanup(); wprintf(L"cleanup done\r\n")
+#define PRINT_FORMAT(format_str, ...) printf(""format_str"", __VA_ARGS__)
+
+#define PRINT(str) PRINT_FORMAT(str"%s", "")
+
+#define PRINT_WSA_ERR(format_str) PRINT_FORMAT(""format_str"", WSAGetLastError())
+
+#define _CLEANUP0() WSACleanup(); PRINT("cleanup done\r\n")
 #define _CLEANUP1(addr)                     \
     do{if((addr) != NULL)                   \
         freeaddrinfo((void*)((addr)));      \
@@ -72,10 +109,6 @@ void print_addr(struct sockaddr *addr, const char *prefix);
 
 #define CLEANUP(...) GET_OVERRIDE("ignored", ##__VA_ARGS__, _CLEANUP3, _CLEANUP2, _CLEANUP1, _CLEANUP0)(__VA_ARGS__)
 
-#define PRINT_FORMAT(format_str, ...) wprintf(L""format_str"", #__VA_ARGS__)
-
-#define PRINT_WSA_ERR(format_str) PRINT_FORMAT(L""format_str"", WSAGetLastError())
-
-
+//endregion
 
 #endif
