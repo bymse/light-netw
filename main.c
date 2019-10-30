@@ -12,6 +12,11 @@ int main(int argc, char *argv[]) {
 
     switch (options.type) {
         case Server_dirshare:
+            if (SetCurrentDirectory(options.datapath) == 0) {
+                PRINT_FORMAT("Directory error: %lu", GetLastError());
+                operes = Patherr;
+                break;
+            }
         case Server_message:
             operes = run_server(&options);
             break;
@@ -22,7 +27,7 @@ int main(int argc, char *argv[]) {
             break;
 
         case Invalid_type:
-        case _run_type_num:
+        case _run_type_count:
             PRINT_FORMAT("invalid run type: %i \n", options.type);
             break;
     }

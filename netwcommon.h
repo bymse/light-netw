@@ -19,17 +19,20 @@
 #include <ws2tcpip.h>
 #include <signal.h>
 
+
 #define DEFAULT_PORT "3490"
 #define MAX_PACKET_S 1300
 
 typedef struct addrinfo addrinfo;
 typedef struct WSAData WSAData;
+typedef struct sockaddr_storage sockaddr_storage;
 
 typedef enum error_code {
-    Notyerr = -10000,
+    Notyerr = -127,
     Opterr = -100,
     Patherr = -99,
     Filerr = -98,
+    Memerr = -97,
     WSAStarterr = -10,
     Addrerr = -9,
     Sockerr = -8,
@@ -41,6 +44,7 @@ typedef enum error_code {
     Noerr = 0
 } error_code;
 
+
 typedef enum run_type {
     Invalid_type,
     Server_dirshare,
@@ -48,10 +52,10 @@ typedef enum run_type {
     Client_filereq,
     Client_message,
 
-    _run_type_num
+    _run_type_count
 } runtype;
 
-char const *const run_type_names[_run_type_num] = {
+char const *const run_type_names[_run_type_count] = {
         [Invalid_type] = "i",
         [Server_dirshare] = "sd",
         [Server_message] = "sm",
@@ -70,10 +74,11 @@ typedef struct netwopts {
 error_code wsa_start(const char *prefix);
 
 error_code
-getaddr_for(const char *target_addr, const char *port, const char *prefix, addrinfo *hints, addrinfo **target_addrinfo);
+getaddr_for(const char *target_addr, const char *port, addrinfo *hints, addrinfo **target_addrinfo, const char *prefix);
 
-void print_addr(struct sockaddr_storage *addr, const char *prefix);
+void print_addr(sockaddr_storage *addr, const char *prefix);
 
+error_code re_memalloc(char **ptr, size_t size, char *prefix);
 
 //region MACRO
 

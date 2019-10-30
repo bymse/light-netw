@@ -2,7 +2,7 @@
 #define NETWORKS_CLIENT_H
 
 #include "netwcommon.h"
-
+#include "filesys.h"
 error_code run_client(const netwopts *options);
 
 #define CLIENT_PREFIX "CLIENT->"

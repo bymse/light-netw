@@ -1,7 +1,7 @@
 #include "netwoptions.h"
 
 runtype get_type(char *name) {
-    for (runtype type = 0; type < _run_type_num; type++) {
+    for (runtype type = 0; type < _run_type_count; type++) {
         if (!strcmp(name, run_type_names[type]))
             return type;
     }
@@ -10,18 +10,20 @@ runtype get_type(char *name) {
 
 error_code parse_flags(int argc, char *argv[], netwopts *options) {
     int opt;
-    while ((opt = getopt(argc, argv, OPT_STR)) != -1) {
+    char *opt_str = NULL;
+    OPT_STR(opt_str);
+    while ((opt = getopt(argc, argv, opt_str)) != -1) {
         switch (opt) {
-            case GCH(ADDR_FLAG):
+            case ADDR_FLAG:
                 options->hostname = optarg;
                 break;
-            case GCH(PORT_FLAG):
+            case PORT_FLAG:
                 options->port = optarg;
                 break;
-            case GCH(DATA_FLAG):
+            case DATA_FLAG:
                 options->datapath = optarg;
                 break;
-            case GCH(TYPE_FLAG):
+            case TYPE_FLAG:
                 options->type = get_type(optarg);
                 break;
             default:

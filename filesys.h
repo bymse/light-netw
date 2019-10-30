@@ -4,12 +4,10 @@
 #include <windows.h>
 #include "netwcommon.h"
 
-#define OPEN_MODE "wb"
+error_code try_read_file(char *path, char **data, unsigned long *data_size, char *prefix);
 
-error_code check_dir(char *path);
+error_code open_file(char *path, HANDLE *filed, char *prefix);
 
-error_code check_file(char *path);
-
-error_code open_file(char *path, FILE **data);
+error_code read_all(HANDLE file, char **data, unsigned long *data_length, char *prefix);
 
 #endif //NETWORKS_FILESYS_H
