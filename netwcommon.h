@@ -23,9 +23,10 @@
 #define DEFAULT_PORT "3490"
 #define MAX_PACKET_S 1300
 
-typedef struct addrinfo addrinfo;
-typedef struct WSAData WSAData;
-typedef struct sockaddr_storage sockaddr_storage;
+char *GLOBAL_PREFIX = "";
+
+#define SET_PREFIX(prefix) GLOBAL_PREFIX = ""prefix"-> "
+#define CLEAR_PREFIX() GLOBAL_PREFIX = "";
 
 typedef enum error_code {
     Notyerr = -127,
@@ -71,24 +72,34 @@ typedef struct netwopts {
     runtype type;
 } netwopts;
 
-error_code wsa_start(const char *prefix);
+typedef struct addrinfo addrinfo;
+typedef struct WSAData WSAData;
+typedef struct sockaddr_storage sockaddr_storage;
+
+error_code wsa_start();
 
 error_code
-getaddr_for(const char *target_addr, const char *port, addrinfo *hints, addrinfo **target_addrinfo, const char *prefix);
+getaddr_for(const char *target_addr, const char *port, addrinfo *hints, addrinfo **target_addrinfo);
 
-void print_addr(sockaddr_storage *addr, const char *prefix);
+error_code send_data(SOCKET incom_sockd, char *data, size_t data_leng);
 
-error_code re_memalloc(char **ptr, size_t size, char *prefix);
+error_code rcv_data(SOCKET sockd, char **data, size_t *data_size);
+
+void print_addr(sockaddr_storage *addr);
+
+error_code re_memalloc(char **ptr, size_t size);
 
 //region MACRO
 
 #define GET_OVERRIDE(_1, _2, _3, _4, NAME, ...) NAME
 
-#define PRINT_FORMAT(format_str, ...) printf(""format_str"", __VA_ARGS__)
+#define PRINT_FORMAT(format_str, ...) printf("%s"format_str"", GLOBAL_PREFIX, __VA_ARGS__)
 
 #define PRINT(str) PRINT_FORMAT(str"%s", "")
 
-#define PRINT_WSA_ERR(format_str) PRINT_FORMAT(""format_str"", WSAGetLastError())
+#define PRINT_ERROR(message, ...) PRINT_FORMAT("error: "message"\r\n", __VA_ARGS__)
+
+#define PRINT_WSA_ERR(str) PRINT_ERROR(""str" %u\r\n", WSAGetLastError())
 
 #define _CLEANUP0() WSACleanup(); PRINT("cleanup done\r\n")
 #define _CLEANUP1(addr)                     \

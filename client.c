@@ -21,7 +21,7 @@ error_code run_client(const netwopts *options) {
     addrinfo *target_addrinfo = NULL;
 
     if ((oper_res = GETADDR_FOR_CONNECT(options->hostname, options->port,
-                                        &target_addrinfo)(, , , ,)(, , , ,)) != Noerr) {
+                                        &target_addrinfo)) != Noerr) {
         CLEANUP(target_addrinfo);
         return oper_res;
     }

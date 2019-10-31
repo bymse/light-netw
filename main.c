@@ -28,6 +28,7 @@ int main(int argc, char *argv[]) {
 
         case Invalid_type:
         case _run_type_count:
+            operes = Notyerr;
             PRINT_FORMAT("invalid run type: %i \n", options.type);
             break;
     }

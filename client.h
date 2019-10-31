@@ -12,7 +12,7 @@ error_code run_client(const netwopts *options);
 #define PRINT_CLIENT(str) PRINT_CLIENT_FORMAT(str"%s", "")
 
 //todo: check without AI_CANONNAME        
-#define CLIENT_HINTS &(addrinfo) {          \
+#define CLIENT_HINTS &((addrinfo) {          \
             .ai_family = AF_INET6,          \
             .ai_socktype = SOCK_STREAM,     \
             .ai_flags = AI_CANONNAME,       \
@@ -21,9 +21,9 @@ error_code run_client(const netwopts *options);
             .ai_next = NULL,                \
             .ai_protocol = 0,               \
             .ai_addrlen = 0,                \
-}
+})
 
-#define GETADDR_FOR_CONNECT(target_addr, port, target_addrinfo) getaddr_for(target_addr, port, CLIENT_PREFIX, CLIENT_HINTS, target_addrinfo)
+#define GETADDR_FOR_CONNECT(target_addr, port, target_addrinfo) getaddr_for(target_addr, port, CLIENT_HINTS, target_addrinfo, CLIENT_PREFIX)
 
 
 #endif //NETWORKS_CLIENT_H
