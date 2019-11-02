@@ -5,11 +5,12 @@
 
 #define ADDR_FLAG 'a'
 #define PORT_FLAG 'p'
-#define DATA_FLAG 'd'
 #define TYPE_FLAG 't'
+#define INPUT_PATH 'i'
+#define OUTPUT_PATH 'o'
 
-#define OPT_STR(str) sprintf(opt_str, ":%c:%c:%c:%c:", ADDR_FLAG, PORT_FLAG, DATA_FLAG, TYPE_FLAG)
 
+#define OPT_STR (char[]){':', ADDR_FLAG, ':', PORT_FLAG, ':', INPUT_PATH, ':', TYPE_FLAG, ':', OUTPUT_PATH, ':' ,'\0'}
 
 error_code parse_flags(int argc, char *argv[], netwopts *options);
 

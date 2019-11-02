@@ -7,7 +7,7 @@ error_code start_listen(SOCKET sockd);
 error_code get_connection(SOCKET sockd, SOCKET *incom_sockd);
 
 
-error_code process_connection(SOCKET incom_sockd, const netwopts *options);
+error_code server_process_connection(SOCKET sockd, const netwopts *options);
 
 error_code dirshare(SOCKET sockd);
 
@@ -16,21 +16,11 @@ error_code send_file(SOCKET sockd, char *file_name);
 
 error_code run_server(const netwopts *options) {
     SET_PREFIX(SERVER_PREFIX);
-    if (options == NULL) {
-        PRINT("inalid options\n");
-        return Opterr;
-    }
-
     error_code operes;
-
-    if ((operes = wsa_start()) != Noerr) {
-        return operes;
-    }
-
     addrinfo *target_addrinfo = NULL;
     SOCKET sockd = INVALID_SOCKET, income_sockd = INVALID_SOCKET;
 
-    if ((operes = GETADDR_FOR_BIND(options->port, &target_addrinfo)) != Noerr) {
+    if ((operes = init(options, SERVER_HINTS, &target_addrinfo)) != Noerr) {
         CLEANUP(target_addrinfo);
         return operes;
     }
@@ -45,12 +35,13 @@ error_code run_server(const netwopts *options) {
         return operes;
     }
 
+    PRINT("waiting for connection...\r\n");
     if ((operes = get_connection(sockd, &income_sockd)) != Noerr) {
         CLEANUP(target_addrinfo, sockd);
         return operes;
     }
 
-    operes = process_connection(income_sockd, options);
+    operes = server_process_connection(income_sockd, options);
 
     closesocket(income_sockd);
     CLEANUP(target_addrinfo, sockd);
@@ -116,17 +107,15 @@ error_code get_connection(SOCKET sockd, SOCKET *incom_sockd) {
 }
 
 
-error_code process_connection(SOCKET incom_sockd, const netwopts *options) {
+error_code server_process_connection(SOCKET sockd, const netwopts *options) {
     error_code operes;
     switch (options->type) {
         case Server_dirshare:
-            operes = dirshare(incom_sockd);
+            operes = dirshare(sockd);
             break;
         case Server_message:
-        case Invalid_type:
-        case _run_type_count:
-        default:
             PRINT("operation not implemented");
+        default:
             operes = Opterr;
             break;
     }
@@ -134,31 +123,45 @@ error_code process_connection(SOCKET incom_sockd, const netwopts *options) {
 }
 
 error_code dirshare(SOCKET sockd) {
-    char *data = NULL;
-    size_t data_size = 0;
     error_code operes;
-    if ((operes = rcv_data(sockd, &data, &data_size)) != Noerr) {
-        free(data);
+    packet packet = {
+            .state_code = Noerr,
+            .data = NULL,
+            .data_s = -1
+    };
+    if ((operes = rcv_packet(sockd, &packet)) != Noerr) {
+        freepacket(&packet);
         return operes;
     }
 
-    operes = send_file(sockd, data);
+    if (packet.state_code == Noerr) {
+        operes = send_file(sockd, packet.data);
+    } else {
+        PRINT_FORMAT("state code from client %u", packet.state_code);
+    }
 
-    free(data);
+    freepacket(&packet);
     return operes;
 }
 
 error_code send_file(SOCKET sockd, char *file_name) {
     error_code operes;
     unsigned long data_size = 0;
-    char *data;
+    char *data = NULL;
+    packet packet;
 
-    if ((operes = try_read_file(file_name, &data, &data_size)) != Noerr) {
-        free(data);
-        return operes;
+    operes = try_read_file(file_name, &data, &data_size);
+
+    if (operes == Noerr) {
+        packet.data = data;
+        packet.data_s = data_size;
+        packet.state_code = operes;
+    } else {
+        packet.data_s = 0;
+        packet.state_code = operes;
     }
 
-    operes = send_data(sockd, data, data_size);
+    operes = send_packet(sockd, &packet);
 
     free(data);
     return operes;

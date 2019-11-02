@@ -2,6 +2,30 @@
 
 #define CUST_MAKEWORD(a, b) ((WORD)(((unsigned)(a))|(((unsigned)(b))<<8u)))
 
+error_code wsa_start();
+
+error_code getaddr_for(const char *target_addr, const char *port, addrinfo *hints, addrinfo **target_addrinfo);
+
+error_code send_data(SOCKET sockd, char *data, size_t data_leng);
+
+error_code rcv_data(SOCKET sockd, char **data, size_t *data_size);
+
+
+error_code init(const netwopts *options, addrinfo *hints, addrinfo **target_addrinfo) {
+    error_code operes;
+    if (options == NULL) {
+        PRINT("inalid options\n");
+        return Opterr;
+    }
+
+    if ((operes = wsa_start()) != Noerr) {
+        return operes;
+    }
+
+    operes = getaddr_for(options->hostname, options->port, hints, target_addrinfo);
+    return operes;
+}
+
 error_code wsa_start() {
     WSAData wsaData;
     int err = 0;
@@ -20,13 +44,53 @@ error_code getaddr_for(const char *target_addr, const char *port, addrinfo *hint
     return Noerr;
 }
 
-error_code send_data(SOCKET incom_sockd, char *data, size_t data_leng) {
-    if (send(incom_sockd, data, data_leng, 0) == SOCKET_ERROR) {
+
+error_code send_packet(SOCKET sockd, packet *packet) {
+    error_code operes;
+    char *data = NULL;
+    size_t data_s = packet->data_s + sizeof(char);
+
+    if ((operes = re_memalloc(&data, data_s)) != Noerr) {
+        return operes;
+    }
+
+    data[0] = packet->state_code;
+    memcpy(data + 1, packet->data, packet->data_s);
+
+    operes = send_data(sockd, data, data_s);
+    free(data);
+    return operes;
+}
+
+error_code send_data(SOCKET sockd, char *data, size_t data_leng) {
+    if (send(sockd, data, data_leng, 0) == SOCKET_ERROR) {
         PRINT_WSA_ERR("send");
         return Senderr;
     }
 
     return Noerr;
+}
+
+error_code rcv_packet(SOCKET sockd, packet *packet) {
+    error_code operes;
+    size_t packet_s;
+    char *data = NULL;
+
+    if ((operes = rcv_data(sockd, &data, &packet_s)) != Noerr) {
+        free(data);
+        return operes;
+    }
+
+    if (packet_s <= 0) {
+        PRINT_ERROR("packet size %u", packet_s);
+        operes = Packerr;
+    } else {
+        packet->state_code = data[0];
+        packet->data = data + 1;
+        packet->data_s = packet_s - 1;
+    }
+
+    return operes;
 }
 
 error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
@@ -51,7 +115,7 @@ error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
             *data_size += recv_leng;
         }
 
-    } while (recv_leng > 0);
+    } while (recv_leng > sizeof(buf) / sizeof(buf[0]));
 
     return Noerr;
 }
@@ -73,4 +137,10 @@ error_code re_memalloc(char **ptr, size_t size) {
 
     return Noerr;
 }
+
+void freepacket(packet *packet) {
+    free(packet->data - 1);
+}
+
+
 

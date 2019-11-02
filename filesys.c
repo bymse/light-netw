@@ -37,6 +37,24 @@ error_code read_all(HANDLE file, char **data, unsigned long *data_length) {
     return Noerr;
 }
 
+error_code write_file(char *path, char *data, unsigned long data_s) {
+    error_code operes;
+    HANDLE file;
+    DWORD numberOfBytesWritten;
+
+    if ((operes = open_file(path, &file)) != Noerr) {
+        return operes;
+    }
+
+    if (WriteFile(file, data, data_s, &numberOfBytesWritten, NULL) == FALSE) {
+        PRINT_ERROR("WriteFile %lu", GetLastError());
+        operes = Filerr;
+    } else operes = Noerr;
+
+    CloseHandle(file);
+    return operes;
+}
+
 error_code check_dir(char *path) {
     DWORD attrib = GetFileAttributes(path);
 

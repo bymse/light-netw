@@ -23,17 +23,17 @@
 #define DEFAULT_PORT "3490"
 #define MAX_PACKET_S 1300
 
-char *GLOBAL_PREFIX = "";
+char *GLOBAL_PREFIX;
 
 #define SET_PREFIX(prefix) GLOBAL_PREFIX = ""prefix"-> "
 #define CLEAR_PREFIX() GLOBAL_PREFIX = "";
 
 typedef enum error_code {
-    Notyerr = -127,
     Opterr = -100,
     Patherr = -99,
     Filerr = -98,
     Memerr = -97,
+    Packerr = -50,
     WSAStarterr = -10,
     Addrerr = -9,
     Sockerr = -8,
@@ -56,7 +56,7 @@ typedef enum run_type {
     _run_type_count
 } runtype;
 
-char const *const run_type_names[_run_type_count] = {
+static char const *const run_type_names[_run_type_count] = {
         [Invalid_type] = "i",
         [Server_dirshare] = "sd",
         [Server_message] = "sm",
@@ -68,32 +68,38 @@ char const *const run_type_names[_run_type_count] = {
 typedef struct netwopts {
     char *port;
     char *hostname;
-    char *datapath;
+    char *input_path;
+    char *output_path;
     runtype type;
 } netwopts;
+
+typedef struct packet {
+    error_code state_code;
+    size_t data_s;
+    char *data;
+} packet;
 
 typedef struct addrinfo addrinfo;
 typedef struct WSAData WSAData;
 typedef struct sockaddr_storage sockaddr_storage;
 
-error_code wsa_start();
+error_code init(const netwopts *options, addrinfo *hints, addrinfo **target_addrinfo);
 
-error_code
-getaddr_for(const char *target_addr, const char *port, addrinfo *hints, addrinfo **target_addrinfo);
+error_code send_packet(SOCKET sockd, packet *packet);
 
-error_code send_data(SOCKET incom_sockd, char *data, size_t data_leng);
-
-error_code rcv_data(SOCKET sockd, char **data, size_t *data_size);
+error_code rcv_packet(SOCKET sockd, packet *packet);
 
 void print_addr(sockaddr_storage *addr);
 
 error_code re_memalloc(char **ptr, size_t size);
 
+void freepacket(packet *packet);
+
 //region MACRO
 
 #define GET_OVERRIDE(_1, _2, _3, _4, NAME, ...) NAME
 
-#define PRINT_FORMAT(format_str, ...) printf("%s"format_str"", GLOBAL_PREFIX, __VA_ARGS__)
+#define PRINT_FORMAT(format_str, ...) printf("%s "format_str"", GLOBAL_PREFIX, __VA_ARGS__)
 
 #define PRINT(str) PRINT_FORMAT(str"%s", "")
 

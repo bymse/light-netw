@@ -1,7 +1,13 @@
 #include "simplenetw.h"
 
 int main(int argc, char *argv[]) {
-    netwopts options;
+    netwopts options = {
+            .port = NULL,
+            .input_path = NULL,
+            .hostname = NULL,
+            .output_path = NULL,
+            .type = Invalid_type
+    };
     error_code operes = 0;
     if ((operes = parse_flags(argc, argv, &options)) != Noerr) {
         return operes;
@@ -12,8 +18,8 @@ int main(int argc, char *argv[]) {
 
     switch (options.type) {
         case Server_dirshare:
-            if (SetCurrentDirectory(options.datapath) == 0) {
-                PRINT_FORMAT("Directory error: %lu", GetLastError());
+            if (SetCurrentDirectory(options.input_path) == 0) {
+                PRINT_ERROR("SetCurrentDirectory %lu", GetLastError());
                 operes = Patherr;
                 break;
             }
@@ -28,12 +34,12 @@ int main(int argc, char *argv[]) {
 
         case Invalid_type:
         case _run_type_count:
-            operes = Notyerr;
-            PRINT_FORMAT("invalid run type: %i \n", options.type);
+            operes = Opterr;
+            PRINT_FORMAT("invalid run type: %i\r\n", options.type);
             break;
     }
 
-    PRINT_FORMAT("\n--> result code: %i <--\n", operes);
+    PRINT_FORMAT("\r\n--> result code: %i <--\r\n", operes);
 
     return operes;
 }

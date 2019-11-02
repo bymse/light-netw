@@ -20,6 +20,4 @@ error_code run_server(const netwopts *options);
             .ai_addrlen = 0,                \
 })
 
-#define GETADDR_FOR_BIND(port, target_addrinfo) getaddr_for(NULL, port, SERVER_HINTS, target_addrinfo)
-
 #endif //NETWORKS_SERVER_H

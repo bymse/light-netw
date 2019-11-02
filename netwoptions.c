@@ -10,9 +10,7 @@ runtype get_type(char *name) {
 
 error_code parse_flags(int argc, char *argv[], netwopts *options) {
     int opt;
-    char *opt_str = NULL;
-    OPT_STR(opt_str);
-    while ((opt = getopt(argc, argv, opt_str)) != -1) {
+    while ((opt = getopt(argc, argv, OPT_STR)) != -1) {
         switch (opt) {
             case ADDR_FLAG:
                 options->hostname = optarg;
@@ -20,8 +18,11 @@ error_code parse_flags(int argc, char *argv[], netwopts *options) {
             case PORT_FLAG:
                 options->port = optarg;
                 break;
-            case DATA_FLAG:
-                options->datapath = optarg;
+            case INPUT_PATH:
+                options->input_path = optarg;
+                break;
+            case OUTPUT_PATH:
+                options->output_path = optarg;
                 break;
             case TYPE_FLAG:
                 options->type = get_type(optarg);
