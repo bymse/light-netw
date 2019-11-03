@@ -8,6 +8,14 @@ runtype get_type(char *name) {
     return Invalid_type;
 }
 
+int get_routing(char *input) {
+    if (!strcmp(input, "v4"))
+        return AF_INET;
+    if (!strcmp(input, "v6"))
+        return AF_INET6;
+    return AF_UNSPEC;
+}
+
 error_code parse_flags(int argc, char *argv[], netwopts *options) {
     int opt;
     while ((opt = getopt(argc, argv, OPT_STR)) != -1) {
@@ -26,6 +34,9 @@ error_code parse_flags(int argc, char *argv[], netwopts *options) {
                 break;
             case TYPE_FLAG:
                 options->type = get_type(optarg);
+                break;
+            case PROTOCOL_FLAG:
+                options->routing = get_routing(optarg);
                 break;
             default:
                 PRINT("options error\n");

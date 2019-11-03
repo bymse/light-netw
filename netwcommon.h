@@ -26,7 +26,7 @@
 char *GLOBAL_PREFIX;
 
 #define SET_PREFIX(prefix) GLOBAL_PREFIX = ""prefix"-> "
-#define CLEAR_PREFIX() GLOBAL_PREFIX = "";
+#define CLEAR_PREFIX() GLOBAL_PREFIX = ""
 
 typedef enum error_code {
     Opterr = -100,
@@ -71,6 +71,7 @@ typedef struct netwopts {
     char *input_path;
     char *output_path;
     runtype type;
+    int routing; //v4 for IPv4, v6 for IPv6
 } netwopts;
 
 typedef struct packet {

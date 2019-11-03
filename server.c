@@ -20,7 +20,7 @@ error_code run_server(const netwopts *options) {
     addrinfo *target_addrinfo = NULL;
     SOCKET sockd = INVALID_SOCKET, income_sockd = INVALID_SOCKET;
 
-    if ((operes = init(options, SERVER_HINTS, &target_addrinfo)) != Noerr) {
+    if ((operes = init(options, SERVER_HINTS(options->routing), &target_addrinfo)) != Noerr) {
         CLEANUP(target_addrinfo);
         return operes;
     }

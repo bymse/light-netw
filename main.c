@@ -1,4 +1,4 @@
-#include "simplenetw.h"
+#include "light-netw.h"
 
 int main(int argc, char *argv[]) {
     netwopts options = {
@@ -6,7 +6,8 @@ int main(int argc, char *argv[]) {
             .input_path = NULL,
             .hostname = NULL,
             .output_path = NULL,
-            .type = Invalid_type
+            .type = Invalid_type,
+            .routing = AF_INET
     };
     error_code operes = 0;
     if ((operes = parse_flags(argc, argv, &options)) != Noerr) {

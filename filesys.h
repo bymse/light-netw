@@ -1,7 +1,6 @@
 #ifndef NETWORKS_FILESYS_H
 #define NETWORKS_FILESYS_H
 
-#include <windows.h>
 #include "netwcommon.h"
 
 error_code try_read_file(char *path, char **data, unsigned long *data_size);

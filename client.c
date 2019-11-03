@@ -13,7 +13,7 @@ error_code run_client(const netwopts *options) {
     SOCKET sockd = INVALID_SOCKET;
     addrinfo *target_addrinfo = NULL;
 
-    if ((operes = init(options, CLIENT_HINTS, &target_addrinfo)) != Noerr) {
+    if ((operes = init(options, CLIENT_HINTS(options->routing), &target_addrinfo)) != Noerr) {
         CLEANUP(target_addrinfo);
         return operes;
     }

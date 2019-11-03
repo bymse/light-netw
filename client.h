@@ -9,8 +9,8 @@
 error_code run_client(const netwopts *options);
 
 //todo: check without AI_CANONNAME        
-#define CLIENT_HINTS &((addrinfo) {         \
-            .ai_family = AF_INET6,          \
+#define CLIENT_HINTS(routing) &((addrinfo) {         \
+            .ai_family = routing,          \
             .ai_socktype = SOCK_STREAM,     \
             .ai_flags = AI_CANONNAME,       \
             .ai_addr = NULL,                \

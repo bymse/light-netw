@@ -9,8 +9,8 @@
 
 error_code run_server(const netwopts *options);
 
-#define SERVER_HINTS &((addrinfo) {         \
-            .ai_family = AF_INET6,          \
+#define SERVER_HINTS(routing) &((addrinfo) {         \
+            .ai_family = routing,          \
             .ai_socktype = SOCK_STREAM,     \
             .ai_flags = AI_PASSIVE,         \
             .ai_addr = NULL,                \
