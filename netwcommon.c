@@ -48,7 +48,7 @@ error_code getaddr_for(const char *target_addr, const char *port, addrinfo *hint
 error_code send_packet(SOCKET sockd, packet *packet) {
     error_code operes;
     char *data = NULL;
-    size_t data_s = packet->data_s + sizeof(char);
+    size_t data_s = packet->data_s + 2 * sizeof(char); //char for state-code + char for \0
 
     if ((operes = re_memalloc(&data, data_s)) != Noerr) {
         return operes;
@@ -56,6 +56,7 @@ error_code send_packet(SOCKET sockd, packet *packet) {
 
     data[0] = packet->state_code;
     memcpy(data + 1, packet->data, packet->data_s);
+    data[data_s - 1] = '\0';
 
     operes = send_data(sockd, data, data_s);
     free(data);
@@ -71,7 +72,7 @@ error_code send_data(SOCKET sockd, char *data, size_t data_leng) {
     return Noerr;
 }
 
-error_code rcv_packet(SOCKET sockd, packet *packet) {
+error_code rcv_packet(SOCKET sockd, packet *packet, BOOL add_terminator) {
     error_code operes;
     size_t packet_s;
     char *data = NULL;
@@ -87,7 +88,8 @@ error_code rcv_packet(SOCKET sockd, packet *packet) {
     } else {
         packet->state_code = data[0];
         packet->data = data + 1;
-        packet->data_s = packet_s - 1;
+        if (!add_terminator)
+            packet->data_s = packet_s - 1;
     }
 
     return operes;

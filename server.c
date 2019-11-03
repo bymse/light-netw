@@ -129,7 +129,7 @@ error_code dirshare(SOCKET sockd) {
             .data = NULL,
             .data_s = -1
     };
-    if ((operes = rcv_packet(sockd, &packet)) != Noerr) {
+    if ((operes = rcv_packet(sockd, &packet, TRUE)) != Noerr) {
         freepacket(&packet);
         return operes;
     }
@@ -137,7 +137,15 @@ error_code dirshare(SOCKET sockd) {
     if (packet.state_code == Noerr) {
         operes = send_file(sockd, packet.data);
     } else {
-        PRINT_FORMAT("state code from client %u", packet.state_code);
+        PRINT_FORMAT("state code from client %u\r\n", packet.state_code);
+        if (packet.data_s < 100)
+            PRINT_FORMAT("file name from client %s\r\n", packet.data);
+        struct packet err_packet = {
+                .data = "Invalid format",
+                .data_s = sizeof("Invalid format"),
+                .state_code = Packerr
+        };
+        operes = send_packet(sockd, &err_packet);
     }
 
     freepacket(&packet);

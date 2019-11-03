@@ -88,7 +88,7 @@ error_code init(const netwopts *options, addrinfo *hints, addrinfo **target_addr
 
 error_code send_packet(SOCKET sockd, packet *packet);
 
-error_code rcv_packet(SOCKET sockd, packet *packet);
+error_code rcv_packet(SOCKET sockd, packet *packet, BOOL add_terminator);
 
 void print_addr(sockaddr_storage *addr);
 

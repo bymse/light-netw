@@ -85,7 +85,7 @@ error_code reqfile(SOCKET sockd, const netwopts *options) {
         return operes;
     }
 
-    if ((operes = rcv_packet(sockd, &packet)) != Noerr) {
+    if ((operes = rcv_packet(sockd, &packet, FALSE)) != Noerr) {
         freepacket(&packet);
         return operes;
     }

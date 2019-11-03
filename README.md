@@ -9,16 +9,16 @@ There are two modes : server and client.
 You can run server and specify directory:
 
 ```bash
-light-netw -t sd -i Y:\path\to\dir
+light-netw -t sd -r v6 -p 3490 -i Y:\path\to\dir
 ```
 
 And if you call client like this:
 
 ```bash
-light-netw -t cf -a localhost -i folder\file.txt -o Y:\path\to\some_file.txt
+light-netw -t cf -r v6 -a localhost -p 3490 -i folder\file.txt -o Y:\path\to\some_file.txt
 ```
 
-Then the server will try to find file ``Y:\path\to\dir\folder\file.txt`` and send it to the client. The client will write it to ``Y:\path\to\some_file.txt``. If  ``Y:\path\to\dir\folder\file.txt`` doesn't exist the server will create it.
+The server will get `"folder\file.txt"` from client via IP`v6` and port `3490`, try to find file ``Y:\path\to\dir\folder\file.txt`` and send it to the client. The client will write it to ``Y:\path\to\some_file.txt``. 
 
 | FLAG | Meaning                                              |
 | ---- | ---------------------------------------------------- |
