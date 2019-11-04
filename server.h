@@ -1,8 +1,8 @@
 #ifndef NETWORKS_SERVER_H
 #define NETWORKS_SERVER_H
 
-#include "netwcommon.h"
-#include "filesys.h"
+#include "common/netwcommon.h"
+#include "common/filesys.h"
 
 #define BACKLOG 10   // how many pending connections queue will hold
 #define SERVER_PREFIX "SERVER"

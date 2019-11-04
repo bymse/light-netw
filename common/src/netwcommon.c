@@ -1,6 +1,8 @@
-#include "netwcommon.h"
+#include "../netwcommon.h"
 
 #define CUST_MAKEWORD(a, b) ((WORD)(((unsigned)(a))|(((unsigned)(b))<<8u)))
+
+char *GLOBAL_PREFIX = "";
 
 error_code wsa_start();
 
@@ -48,7 +50,7 @@ error_code getaddr_for(const char *target_addr, const char *port, addrinfo *hint
 error_code send_packet(SOCKET sockd, packet *packet) {
     error_code operes;
     char *data = NULL;
-    size_t data_s = packet->data_s + 2 * sizeof(char); //char for state-code + char for \0
+    size_t data_s = packet->data_s + PACKET_HEADERS_SIZE; //char for state-code + char for \0
 
     if ((operes = re_memalloc(&data, data_s)) != Noerr) {
         return operes;
@@ -76,6 +78,11 @@ error_code rcv_packet(SOCKET sockd, packet *packet, BOOL add_terminator) {
     error_code operes;
     size_t packet_s;
     char *data = NULL;
+    *packet = (struct packet){
+        .data_s = 0,
+        .data = NULL,
+        .state_code = Noerr
+    };
 
     if ((operes = rcv_data(sockd, &data, &packet_s)) != Noerr) {
         free(data);
@@ -88,8 +95,9 @@ error_code rcv_packet(SOCKET sockd, packet *packet, BOOL add_terminator) {
     } else {
         packet->state_code = data[0];
         packet->data = data + 1;
-        if (!add_terminator)
-            packet->data_s = packet_s - 1;
+        packet->data_s = add_terminator
+                         ? packet_s - 1 
+                         : packet_s - PACKET_HEADERS_SIZE;
     }
 
     return operes;

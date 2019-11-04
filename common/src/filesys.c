@@ -1,10 +1,10 @@
-#include "filesys.h"
+#include "../filesys.h"
 
 
 error_code try_read_file(char *path, char **data, unsigned long *data_size) {
     error_code operes;
     HANDLE file;
-    if ((operes = open_file(path, &file)) != Noerr) {
+    if ((operes = open_file(path, &file, TRUE)) != Noerr) {
         return operes;
     }
 
@@ -13,8 +13,9 @@ error_code try_read_file(char *path, char **data, unsigned long *data_size) {
     return operes;
 }
 
-error_code open_file(char *path, HANDLE *filed) {
-    if ((*filed = CreateFileA(path, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_ALWAYS,
+error_code open_file(char *path, HANDLE *filed, BOOL for_read) {
+    DWORD open_opt = for_read ? OPEN_EXISTING : CREATE_ALWAYS;
+    if ((*filed = CreateFileA(path, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, open_opt,
                               FILE_ATTRIBUTE_NORMAL, NULL)) == NULL) {
         PRINT_ERROR("CreateFileA(%s) %lu", path, GetLastError());
         return Filerr;
@@ -42,7 +43,7 @@ error_code write_file(char *path, char *data, unsigned long data_s) {
     HANDLE file;
     DWORD numberOfBytesWritten;
 
-    if ((operes = open_file(path, &file)) != Noerr) {
+    if ((operes = open_file(path, &file, FALSE)) != Noerr) {
         return operes;
     }
 

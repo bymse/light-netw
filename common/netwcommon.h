@@ -22,8 +22,9 @@
 
 #define DEFAULT_PORT "3490"
 #define MAX_PACKET_S 1300
+#define PACKET_HEADERS_SIZE (sizeof(char) + sizeof(char))
 
-char *GLOBAL_PREFIX;
+extern char *GLOBAL_PREFIX;
 
 #define SET_PREFIX(prefix) GLOBAL_PREFIX = ""prefix"-> "
 #define CLEAR_PREFIX() GLOBAL_PREFIX = ""

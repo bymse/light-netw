@@ -1,8 +1,8 @@
 #ifndef NETWORKS_CLIENT_H
 #define NETWORKS_CLIENT_H
 
-#include "netwcommon.h"
-#include "filesys.h"
+#include "common/netwcommon.h"
+#include "common/filesys.h"
 
 #define CLIENT_PREFIX "CLIENT"
 

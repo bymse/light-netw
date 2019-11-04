@@ -1,4 +1,4 @@
-#include "netwoptions.h"
+#include "../netwoptions.h"
 
 runtype get_type(char *name) {
     for (runtype type = 0; type < _run_type_count; type++) {
