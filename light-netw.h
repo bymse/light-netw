@@ -2,8 +2,8 @@
 #define NETWORKS_SIMPLENETW_H
 
 #include "common/netwcommon.h"
-#include "server.h"
-#include "client.h"
+#include "client-server/server.h"
+#include "client-server/client.h"
 #include "common/netwoptions.h"
 #include "common/filesys.h"
 

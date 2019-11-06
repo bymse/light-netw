@@ -1,7 +1,9 @@
 #ifndef NETWORKS_NETWOPTIONS_H
 #define NETWORKS_NETWOPTIONS_H
 
-#include "netwcommon.h"
+#include "netwbase.h"
+#include "netwtypes.h"
+#include "netwlogging.h"
 
 #define ADDR_FLAG 'a'
 #define PROTOCOL_FLAG 'r'

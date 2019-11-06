@@ -1,4 +1,4 @@
-#include "server.h"
+#include "../server.h"
 
 error_code bind_to(addrinfo *available_addrs, SOCKET *sockd);
 

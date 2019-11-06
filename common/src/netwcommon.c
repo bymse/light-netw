@@ -2,8 +2,6 @@
 
 #define CUST_MAKEWORD(a, b) ((WORD)(((unsigned)(a))|(((unsigned)(b))<<8u)))
 
-char *GLOBAL_PREFIX = "";
-
 error_code wsa_start();
 
 error_code getaddr_for(const char *target_addr, const char *port, addrinfo *hints, addrinfo **target_addrinfo);
