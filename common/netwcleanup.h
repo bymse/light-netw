@@ -1,30 +1,32 @@
 #ifndef LIGHT_NETW_NETWCLEANUP_H
 #define LIGHT_NETW_NETWCLEANUP_H
 
-#include "netwcommon.h"
+#include "netwbase.h"
+#include "netwlogging.h"
 
-#define GET_OVERRIDE(_1, _2, _3, NAME, ...) NAME
+void freepacket(packet_t *packet);
 
+#define GET_OVERLOAD(_1, _2, _3, NAME, ...) NAME
 
-//todo add logging
-
-#define _CLEANUP0() WSACleanup();
-#define _CLEANUP1(addr)                     \
-    do{if((addr) != NULL)                   \
-        freeaddrinfo((void*)((addr)));      \
-    _CLEANUP0();                            \
-    }while(0)                               \
+//wrapper
+#define W(statement) do{statement;}while(0)
 
 
-#define _CLEANUP2(addr, socket)             \
-    do{if((socket) > 0)                     \
-        closesocket((socket)+0L);           \
-    _CLEANUP1((addr));                      \
-    }while(0)                               \
+#define BASECLEANUP(cleanme) _Generic((cleanme),                    \
+                                        addrinfo*: freeaddrinfo,    \
+                                        char*: free,                \
+                                        SOCKET: closesocket,        \
+                                        packet_t *: freepacket)     \
+                                        (cleanme)                   \
+
+#define _CLEANUP1(n1) W(BASECLEANUP(n1))
+#define _CLEANUP2(n1, n2) W(BASECLEANUP(n1);BASECLEANUP(n2))
+#define _CLEANUP3(n1, n2, n3) W(BASECLEANUP(n1); BASECLEANUP(n2); BASECLEANUP(n3))
+
+#define CLEANUP(...) GET_OVERLOAD(__VA_ARGS__, _CLEANUP3, _CLEANUP2, _CLEANUP1)(__VA_ARGS__)
+
+#define FINAL_CLEANUP(...) CLEANUP(__VA_ARGS__); WSACleanup(); CLEAR_PREFIX()
 
 
-#define CLEANUP(...) GET_OVERRIDE("ignored", ##__VA_ARGS__, _CLEANUP2, _CLEANUP1, _CLEANUP0)(__VA_ARGS__)
-
-error_code test();
 
 #endif //LIGHT_NETW_NETWCLEANUP_H

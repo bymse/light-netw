@@ -14,19 +14,19 @@ error_code run_client(const netwopts *options) {
     addrinfo *target_addrinfo = NULL;
 
     if ((operes = init(options, CLIENT_HINTS(options->routing), &target_addrinfo)) != Noerr) {
-        CLEANUP(target_addrinfo);
+        FINAL_CLEANUP(target_addrinfo);
         return operes;
     }
 
     if ((operes = connect_to(target_addrinfo, &sockd)) != Noerr) {
-        CLEANUP(target_addrinfo, sockd);
+        FINAL_CLEANUP(target_addrinfo, sockd);
         return operes;
     }
-
+    CLEANUP(target_addrinfo);
+    
     operes = client_process_connection(sockd, options);
 
-    CLEANUP(target_addrinfo, sockd);
-    CLEAR_PREFIX();
+    FINAL_CLEANUP(sockd);
     return operes;
 }
 
@@ -42,7 +42,7 @@ error_code connect_to(addrinfo *target_addrinfo, SOCKET *sockd) {
 
         if (connect(*sockd, p->ai_addr, p->ai_addrlen) == -1) {
             PRINT_WSA_ERR("connect");
-            close(*sockd);
+            CLEANUP(*sockd);
             continue;
         }
         break;
@@ -74,7 +74,7 @@ error_code client_process_connection(SOCKET sockd, const netwopts *options) {
 
 error_code reqfile(SOCKET sockd, const netwopts *options) {
     error_code operes;
-    packet packet = {
+    packet_t packet = {
             .state_code = Noerr,
             .data = options->input_path,
             .data_s = strlen(options->input_path) + 1
@@ -86,7 +86,7 @@ error_code reqfile(SOCKET sockd, const netwopts *options) {
     }
 
     if ((operes = rcv_packet(sockd, &packet, FALSE)) != Noerr) {
-        freepacket(&packet);
+        CLEANUP(&packet);
         return operes;
     }
 
@@ -96,6 +96,6 @@ error_code reqfile(SOCKET sockd, const netwopts *options) {
         operes = write_file(options->output_path, packet.data, packet.data_s);
     }
 
-    freepacket(&packet);
+    CLEANUP(&packet);
     return operes;
 }

@@ -21,31 +21,31 @@ error_code run_server(const netwopts *options) {
     SOCKET sockd = INVALID_SOCKET, income_sockd = INVALID_SOCKET;
 
     if ((operes = init(options, SERVER_HINTS(options->routing), &target_addrinfo)) != Noerr) {
-        CLEANUP(target_addrinfo);
+        FINAL_CLEANUP(target_addrinfo);
         return operes;
     }
 
     if ((operes = bind_to(target_addrinfo, &sockd)) != Noerr) {
-        CLEANUP(target_addrinfo, sockd);
+        FINAL_CLEANUP(target_addrinfo, sockd);
         return operes;
     }
 
+    CLEANUP(target_addrinfo);
+
     if ((operes = start_listen(sockd)) != Noerr) {
-        CLEANUP(target_addrinfo, sockd);
+        FINAL_CLEANUP(sockd);
         return operes;
     }
 
     PRINT("waiting for connection...\r\n");
     if ((operes = get_connection(sockd, &income_sockd)) != Noerr) {
-        CLEANUP(target_addrinfo, sockd);
+        FINAL_CLEANUP(sockd);
         return operes;
     }
 
     operes = server_process_connection(income_sockd, options);
 
-    closesocket(income_sockd);
-    CLEANUP(target_addrinfo, sockd);
-    CLEAR_PREFIX();
+    FINAL_CLEANUP(target_addrinfo, income_sockd, sockd);
     return operes;
 }
 
@@ -67,7 +67,7 @@ error_code bind_to(addrinfo *available_addrs, SOCKET *sockd) {
         }
 
         if (bind(*sockd, p->ai_addr, p->ai_addrlen)) {
-            close(*sockd);
+            CLEANUP(*sockd);
             PRINT_WSA_ERR("bind");
             continue;
         }
@@ -124,13 +124,13 @@ error_code server_process_connection(SOCKET sockd, const netwopts *options) {
 
 error_code dirshare(SOCKET sockd) {
     error_code operes;
-    packet packet = {
+    packet_t packet = {
             .state_code = Noerr,
             .data = NULL,
             .data_s = -1
     };
     if ((operes = rcv_packet(sockd, &packet, TRUE)) != Noerr) {
-        freepacket(&packet);
+        CLEANUP(&packet);
         return operes;
     }
 
@@ -140,7 +140,7 @@ error_code dirshare(SOCKET sockd) {
         PRINT_FORMAT("state code from client %u\r\n", packet.state_code);
         if (packet.data_s < 100)
             PRINT_FORMAT("file name from client %s\r\n", packet.data);
-        struct packet err_packet = {
+        struct packet_t err_packet = {
                 .data = "Invalid format",
                 .data_s = sizeof("Invalid format"),
                 .state_code = Packerr
@@ -148,7 +148,7 @@ error_code dirshare(SOCKET sockd) {
         operes = send_packet(sockd, &err_packet);
     }
 
-    freepacket(&packet);
+    CLEANUP(&packet);
     return operes;
 }
 
@@ -156,7 +156,7 @@ error_code send_file(SOCKET sockd, char *file_name) {
     error_code operes;
     unsigned long data_size = 0;
     char *data = NULL;
-    packet packet;
+    packet_t packet;
 
     operes = try_read_file(file_name, &data, &data_size);
 
@@ -171,7 +171,7 @@ error_code send_file(SOCKET sockd, char *file_name) {
 
     operes = send_packet(sockd, &packet);
 
-    free(data);
+    CLEANUP(data);
     return operes;
 }
 

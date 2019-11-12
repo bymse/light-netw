@@ -45,7 +45,7 @@ error_code getaddr_for(const char *target_addr, const char *port, addrinfo *hint
 }
 
 
-error_code send_packet(SOCKET sockd, packet *packet) {
+error_code send_packet(SOCKET sockd, packet_t *packet) {
     error_code operes;
     char *data = NULL;
     size_t data_s = packet->data_s + PACKET_HEADERS_SIZE; //char for state-code + char for \0
@@ -59,7 +59,7 @@ error_code send_packet(SOCKET sockd, packet *packet) {
     data[data_s - 1] = '\0';
 
     operes = send_data(sockd, data, data_s);
-    free(data);
+    CLEANUP(data);
     return operes;
 }
 
@@ -72,18 +72,18 @@ error_code send_data(SOCKET sockd, char *data, size_t data_leng) {
     return Noerr;
 }
 
-error_code rcv_packet(SOCKET sockd, packet *packet, BOOL add_terminator) {
+error_code rcv_packet(SOCKET sockd, packet_t *packet, BOOL add_terminator) {
     error_code operes;
     size_t packet_s;
     char *data = NULL;
-    *packet = (struct packet){
+    *packet = (struct packet_t) {
         .data_s = 0,
         .data = NULL,
         .state_code = Noerr
     };
 
     if ((operes = rcv_data(sockd, &data, &packet_s)) != Noerr) {
-        free(data);
+        CLEANUP(data);
         return operes;
     }
 
@@ -115,7 +115,7 @@ error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
         if (recv_leng > 0) {
 
             if ((operes = re_memalloc(data, *data_size + recv_leng)) != Noerr) {
-                free(*data);
+                CLEANUP(*data);
                 *data_size = 0;
                 return operes;
             }
@@ -144,10 +144,6 @@ error_code re_memalloc(char **ptr, size_t size) {
     }
 
     return Noerr;
-}
-
-void freepacket(packet *packet) {
-    free(packet->data - 1);
 }
 
 
