@@ -6,5 +6,6 @@
 #include "client-server/client.h"
 #include "common/netwoptions.h"
 #include "common/filesys.h"
+#include "common/netwlogging.h"
 
 #endif //NETWORKS_SIMPLENETW_H

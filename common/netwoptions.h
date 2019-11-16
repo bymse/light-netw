@@ -11,9 +11,18 @@
 #define TYPE_FLAG 't'
 #define INPUT_PATH 'i'
 #define OUTPUT_PATH 'o'
+#define LOGS_PATH 'l'
 
 
-#define OPT_STR (char[]){':', ADDR_FLAG, ':', PORT_FLAG, ':', INPUT_PATH, ':', TYPE_FLAG, ':', OUTPUT_PATH, ':', PROTOCOL_FLAG, ':' ,'\0'}
+#define OPT_STR (char[]){':',               \
+                        ADDR_FLAG, ':',     \
+                        PORT_FLAG, ':',     \
+                        INPUT_PATH, ':',    \
+                        TYPE_FLAG, ':',     \
+                        OUTPUT_PATH, ':',   \
+                        PROTOCOL_FLAG, ':', \
+                        LOGS_PATH, ':',     \
+                        '\0'}               \
 
 error_code parse_flags(int argc, char *argv[], netwopts *options);
 

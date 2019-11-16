@@ -11,7 +11,7 @@
 #define PACKET_HEADERS_SIZE (sizeof(char) + sizeof(char))
 
 
-error_code init(const netwopts *options, addrinfo *hints, addrinfo **target_addrinfo);
+error_code netwinit(const netwopts *options, addrinfo *hints, addrinfo **target_addrinfo);
 
 error_code send_packet(SOCKET sockd, packet_t *packet);
 
@@ -19,8 +19,13 @@ error_code rcv_packet(SOCKET sockd, packet_t *packet, BOOL add_terminator);
 
 void print_addr(sockaddr_storage *addr);
 
-error_code re_memalloc(char **ptr, size_t size);
+static inline error_code re_memalloc(char **ptr, size_t size) {
+    if ((*ptr = realloc(*ptr, size)) == NULL) {
+        ERR("memory allocation %i", errno);
+        return Memerr;
+    }
 
+    return Noerr;
+}
 
-
-#endif
+#endif //NETWORKS_NETWCOMMON_H

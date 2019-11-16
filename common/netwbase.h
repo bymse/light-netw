@@ -17,5 +17,7 @@
 #include <ws2tcpip.h>
 #include <winsock2.h>
 
+//wrapper
+#define W(statement) do{statement;}while(0)
 
 #endif //LIGHT_NETW_NETWBASE_H

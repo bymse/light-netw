@@ -46,6 +46,7 @@ typedef struct netwopts {
     char *hostname;
     char *input_path;
     char *output_path;
+    char *logs_path;
     runtype type;
     int routing; //v4 for IPv4, v6 for IPv6
 } netwopts;

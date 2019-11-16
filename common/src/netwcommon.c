@@ -11,10 +11,10 @@ error_code send_data(SOCKET sockd, char *data, size_t data_leng);
 error_code rcv_data(SOCKET sockd, char **data, size_t *data_size);
 
 
-error_code init(const netwopts *options, addrinfo *hints, addrinfo **target_addrinfo) {
+error_code netwinit(const netwopts *options, addrinfo *hints, addrinfo **target_addrinfo) {
     error_code operes;
     if (options == NULL) {
-        PRINT("inalid options\n");
+        PRINT("inalid options");
         return Opterr;
     }
 
@@ -23,6 +23,7 @@ error_code init(const netwopts *options, addrinfo *hints, addrinfo **target_addr
     }
 
     operes = getaddr_for(options->hostname, options->port, hints, target_addrinfo);
+    LOG("netwinit ended");
     return operes;
 }
 
@@ -30,17 +31,19 @@ error_code wsa_start() {
     WSAData wsaData;
     int err = 0;
     if ((err = WSAStartup(CUST_MAKEWORD(2, 2), &wsaData)) != NO_ERROR) {
-        PRINT_ERROR("WSAStartup %d", err);
+        ERR("WSAStartup %d", err);
         return WSAStarterr;
     }
+    LOG("WSA has been started");
     return Noerr;
 }
 
 error_code getaddr_for(const char *target_addr, const char *port, addrinfo *hints, addrinfo **target_addrinfo) {
     if (getaddrinfo(target_addr, port, hints, target_addrinfo) != 0) {
-        PRINT_WSA_ERR("getaddrinfo");
+        WSA_ERR("getaddrinfo");
         return Addrerr;
     }
+    LOG_FORMAT("got addr for %s:%s", target_addr == NULL ? "" : target_addr, port);
     return Noerr;
 }
 
@@ -56,7 +59,7 @@ error_code send_packet(SOCKET sockd, packet_t *packet) {
 
     data[0] = packet->state_code;
     memcpy(data + 1, packet->data, packet->data_s);
-    data[data_s - 1] = '\0';
+    data[data_s - 1] = L'\0';
 
     operes = send_data(sockd, data, data_s);
     CLEANUP(data);
@@ -64,11 +67,13 @@ error_code send_packet(SOCKET sockd, packet_t *packet) {
 }
 
 error_code send_data(SOCKET sockd, char *data, size_t data_leng) {
-    if (send(sockd, data, data_leng, 0) == SOCKET_ERROR) {
-        PRINT_WSA_ERR("send");
+    LOG_FORMAT("send data, size: %lu to socket %x", data_leng, sockd);
+    int sent = 0;
+    if ((sent = send(sockd, data, data_leng, 0)) == SOCKET_ERROR) {
+        WSA_ERR("send");
         return Senderr;
     }
-
+    LOG_FORMAT("data has been sent, res-size: %lu to socket %x", sent, sockd);
     return Noerr;
 }
 
@@ -88,7 +93,7 @@ error_code rcv_packet(SOCKET sockd, packet_t *packet, BOOL add_terminator) {
     }
 
     if (packet_s <= 0) {
-        PRINT_ERROR("packet size %u", packet_s);
+        ERR("packet size %u", packet_s);
         operes = Packerr;
     } else {
         packet->state_code = data[0];
@@ -107,15 +112,17 @@ error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
     int recv_leng;
     error_code operes;
     do {
+        LOG_FORMAT("recv starting for socket %x", sockd);
         recv_leng = recv(sockd, buf, sizeof(buf) / sizeof(buf[0]), 0);
         if (recv_leng < 0) {
-            PRINT_WSA_ERR("recv");
+            WSA_ERR("recv");
             return Recverr;
         }
         if (recv_leng > 0) {
 
             if ((operes = re_memalloc(data, *data_size + recv_leng)) != Noerr) {
-                CLEANUP(*data);
+                if (*data_size != 0)
+                    CLEANUP(*data);
                 *data_size = 0;
                 return operes;
             }
@@ -125,6 +132,8 @@ error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
 
     } while (recv_leng > sizeof(buf) / sizeof(buf[0]));
 
+    LOG_FORMAT("recv ending, res-size: %lu for socket %x", *data_size, sockd);
+    
     return Noerr;
 }
 
@@ -132,18 +141,9 @@ void print_addr(sockaddr_storage *addr) {
     unsigned long name_leng = INET6_ADDRSTRLEN;
     char targ_name[name_leng];
     if (WSAAddressToStringA((struct sockaddr *) addr, sizeof(sockaddr_storage), NULL, targ_name, &name_leng) != 0) {
-        PRINT_WSA_ERR("WSAAddressToStringA");
+        WSA_ERR("WSAAddressToStringA");
     } else
-        PRINT_FORMAT("connecting to %s\n", targ_name);
-}
-
-error_code re_memalloc(char **ptr, size_t size) {
-    if ((*ptr = realloc(*ptr, size)) == NULL) {
-        PRINT_ERROR("memory allocation %i", errno);
-        return Memerr;
-    }
-
-    return Noerr;
+        WRITE_FORMAT("connecting to %s", targ_name);
 }
 
 

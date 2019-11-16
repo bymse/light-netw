@@ -15,15 +15,24 @@ error_code send_file(SOCKET sockd, char *file_name);
 
 
 error_code run_server(const netwopts *options) {
+
     SET_PREFIX(SERVER_PREFIX);
+    logs_init(options->logs_path);
+    if (SetCurrentDirectory((LPCSTR) options->input_path) == 0) {
+        ERR("SetCurrentDirectory %lu", GetLastError());
+        return Patherr;
+    }
+
     error_code operes;
     addrinfo *target_addrinfo = NULL;
     SOCKET sockd = INVALID_SOCKET, income_sockd = INVALID_SOCKET;
 
-    if ((operes = init(options, SERVER_HINTS(options->routing), &target_addrinfo)) != Noerr) {
+    if ((operes = netwinit(options, SERVER_HINTS(options->routing), &target_addrinfo)) != Noerr) {
         FINAL_CLEANUP(target_addrinfo);
         return operes;
     }
+
+    WRITE_FORMAT("work, port: %s, target dir: %s", options->port, options->input_path);
 
     if ((operes = bind_to(target_addrinfo, &sockd)) != Noerr) {
         FINAL_CLEANUP(target_addrinfo, sockd);
@@ -37,7 +46,7 @@ error_code run_server(const netwopts *options) {
         return operes;
     }
 
-    PRINT("waiting for connection...\r\n");
+    PRINT("waiting for connection...");
     if ((operes = get_connection(sockd, &income_sockd)) != Noerr) {
         FINAL_CLEANUP(sockd);
         return operes;
@@ -45,7 +54,9 @@ error_code run_server(const netwopts *options) {
 
     operes = server_process_connection(income_sockd, options);
 
-    FINAL_CLEANUP(target_addrinfo, income_sockd, sockd);
+    WRITE_FORMAT("work end for :%s", options->port);
+    
+    FINAL_CLEANUP(income_sockd, sockd);
     return operes;
 }
 
@@ -56,19 +67,19 @@ error_code bind_to(addrinfo *available_addrs, SOCKET *sockd) {
     for (p = available_addrs; p != NULL; p = p->ai_next) {
         if ((*sockd = socket(p->ai_family, p->ai_socktype,
                              p->ai_protocol)) == INVALID_SOCKET) {
-            PRINT_WSA_ERR("socket");
+            WSA_ERR("socket");
             continue;
         }
 
         if (setsockopt(*sockd, SOL_SOCKET, SO_REUSEADDR, yes,
                        sizeof(char)) == SOCKET_ERROR) {
-            PRINT_WSA_ERR("setsockopt");
+            WSA_ERR("setsockopt");
             return Sockerr;
         }
 
         if (bind(*sockd, p->ai_addr, p->ai_addrlen)) {
             CLEANUP(*sockd);
-            PRINT_WSA_ERR("bind");
+            WSA_ERR("bind");
             continue;
         }
 
@@ -76,7 +87,7 @@ error_code bind_to(addrinfo *available_addrs, SOCKET *sockd) {
     }
 
     if (p == NULL) {
-        PRINT("socket connect fail\r\n");
+        PRINT("socket connect fail");
         return Binderr;
     }
     return Noerr;
@@ -85,9 +96,11 @@ error_code bind_to(addrinfo *available_addrs, SOCKET *sockd) {
 error_code start_listen(SOCKET sockd) {
 
     if (listen(sockd, BACKLOG) == SOCKET_ERROR) {
-        PRINT_WSA_ERR("listen");
+        WSA_ERR("listen");
         return Listenerr;
     }
+
+    LOG_FORMAT("start listening, socket: %x", sockd);
 
     return Noerr;
 }
@@ -98,7 +111,7 @@ error_code get_connection(SOCKET sockd, SOCKET *incom_sockd) {
     int addr_length = sizeof(sockaddr_storage);
 
     if ((*incom_sockd = accept(sockd, (struct sockaddr *) &incom_addr, &addr_length)) == INVALID_SOCKET) {
-        PRINT_WSA_ERR("accept");
+        WSA_ERR("accept");
         return Accepterr;
     }
 
@@ -113,8 +126,6 @@ error_code server_process_connection(SOCKET sockd, const netwopts *options) {
         case Server_dirshare:
             operes = dirshare(sockd);
             break;
-        case Server_message:
-            PRINT("operation not implemented");
         default:
             operes = Opterr;
             break;
@@ -129,24 +140,29 @@ error_code dirshare(SOCKET sockd) {
             .data = NULL,
             .data_s = -1
     };
+
+    LOG("start dirshare");
+    
     if ((operes = rcv_packet(sockd, &packet, TRUE)) != Noerr) {
         CLEANUP(&packet);
         return operes;
     }
 
     if (packet.state_code == Noerr) {
+        WRITE_FORMAT("requested file name: %s", packet.data);
         operes = send_file(sockd, packet.data);
     } else {
-        PRINT_FORMAT("state code from client %u\r\n", packet.state_code);
+        WRITE_FORMAT("state code from client %u", packet.state_code);
         if (packet.data_s < 100)
-            PRINT_FORMAT("file name from client %s\r\n", packet.data);
+            WRITE_FORMAT("file name from client %s", packet.data);
         struct packet_t err_packet = {
-                .data = "Invalid format",
-                .data_s = sizeof("Invalid format"),
+                .data = "Invalid format", .data_s = sizeof("Invalid format"),
                 .state_code = Packerr
         };
         operes = send_packet(sockd, &err_packet);
     }
+
+    LOG("dirshare end");
 
     CLEANUP(&packet);
     return operes;
@@ -161,10 +177,12 @@ error_code send_file(SOCKET sockd, char *file_name) {
     operes = try_read_file(file_name, &data, &data_size);
 
     if (operes == Noerr) {
+        LOG_FORMAT("response with file: %s", file_name);
         packet.data = data;
         packet.data_s = data_size;
         packet.state_code = operes;
     } else {
+        WRITE("response empty");
         packet.data_s = 0;
         packet.state_code = operes;
     }

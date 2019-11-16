@@ -32,6 +32,9 @@ error_code parse_flags(int argc, char *argv[], netwopts *options) {
             case OUTPUT_PATH:
                 options->output_path = optarg;
                 break;
+            case LOGS_PATH:
+                options->logs_path = optarg;
+                break;
             case TYPE_FLAG:
                 options->type = get_type(optarg);
                 break;
@@ -39,7 +42,7 @@ error_code parse_flags(int argc, char *argv[], netwopts *options) {
                 options->routing = get_routing(optarg);
                 break;
             default:
-                PRINT("options error\n");
+                PRINT("options error");
                 return Opterr;
         }
     }

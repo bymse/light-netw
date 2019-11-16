@@ -2,21 +2,21 @@
 #define LIGHT_NETW_NETWCLEANUP_H
 
 #include "netwbase.h"
-#include "netwlogging.h"
+#include "netwtypes.h"
+
 
 void freepacket(packet_t *packet);
 
+void freemem(char *ptr);
+
 #define GET_OVERLOAD(_1, _2, _3, NAME, ...) NAME
-
-//wrapper
-#define W(statement) do{statement;}while(0)
-
 
 #define BASECLEANUP(cleanme) _Generic((cleanme),                    \
                                         addrinfo*: freeaddrinfo,    \
-                                        char*: free,                \
+                                        char*: free,             \
                                         SOCKET: closesocket,        \
-                                        packet_t *: freepacket)     \
+                                        packet_t *: freepacket,     \
+                                        FILE *: fclose)             \
                                         (cleanme)                   \
 
 #define _CLEANUP1(n1) W(BASECLEANUP(n1))
@@ -25,7 +25,7 @@ void freepacket(packet_t *packet);
 
 #define CLEANUP(...) GET_OVERLOAD(__VA_ARGS__, _CLEANUP3, _CLEANUP2, _CLEANUP1)(__VA_ARGS__)
 
-#define FINAL_CLEANUP(...) CLEANUP(__VA_ARGS__); WSACleanup(); CLEAR_PREFIX()
+#define FINAL_CLEANUP(...) CLEANUP(__VA_ARGS__); WSACleanup(); CLEAR_PREFIX(); logs_cleanup()
 
 
 

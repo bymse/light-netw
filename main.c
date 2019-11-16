@@ -19,11 +19,6 @@ int main(int argc, char *argv[]) {
 
     switch (options.type) {
         case Server_dirshare:
-            if (SetCurrentDirectory(options.input_path) == 0) {
-                PRINT_ERROR("SetCurrentDirectory %lu", GetLastError());
-                operes = Patherr;
-                break;
-            }
         case Server_message:
             operes = run_server(&options);
             break;
@@ -36,11 +31,12 @@ int main(int argc, char *argv[]) {
         case Invalid_type:
         case _run_type_count:
             operes = Opterr;
-            PRINT_FORMAT("invalid run type: %i\r\n", options.type);
+            PRINT_FORMAT("invalid run type: %i", options.type);
             break;
     }
 
-    PRINT_FORMAT("\r\n--> result code: %i <--\r\n", operes);
+    PRINT("");
+    PRINT_FORMAT("--> result code: %i <--", operes);
 
     return operes;
 }

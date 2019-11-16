@@ -9,23 +9,30 @@ error_code reqfile(SOCKET sockd, const netwopts *options);
 
 error_code run_client(const netwopts *options) {
     SET_PREFIX(CLIENT_PREFIX);
+    logs_init(options->logs_path);
     error_code operes;
     SOCKET sockd = INVALID_SOCKET;
     addrinfo *target_addrinfo = NULL;
 
-    if ((operes = init(options, CLIENT_HINTS(options->routing), &target_addrinfo)) != Noerr) {
+    if ((operes = netwinit(options, CLIENT_HINTS(options->routing), &target_addrinfo)) != Noerr) {
         FINAL_CLEANUP(target_addrinfo);
         return operes;
     }
+
+    WRITE_FORMAT("work, target addr: %s:%s, file: %s", options->hostname, options->port, options->input_path);
 
     if ((operes = connect_to(target_addrinfo, &sockd)) != Noerr) {
         FINAL_CLEANUP(target_addrinfo, sockd);
         return operes;
     }
     CLEANUP(target_addrinfo);
-    
+
     operes = client_process_connection(sockd, options);
 
+    WRITE_FORMAT("work end for target addr: %s:%s", options->hostname, options->port);
+
+
+    logs_cleanup();
     FINAL_CLEANUP(sockd);
     return operes;
 }
@@ -36,12 +43,12 @@ error_code connect_to(addrinfo *target_addrinfo, SOCKET *sockd) {
     for (p = target_addrinfo; p != NULL; p = p->ai_next) {
         if ((*sockd = socket(p->ai_family, p->ai_socktype,
                              p->ai_protocol)) == -1) {
-            PRINT_WSA_ERR("socket");
+            WSA_ERR("socket");
             continue;
         }
 
         if (connect(*sockd, p->ai_addr, p->ai_addrlen) == -1) {
-            PRINT_WSA_ERR("connect");
+            WSA_ERR("connect");
             CLEANUP(*sockd);
             continue;
         }
@@ -49,7 +56,7 @@ error_code connect_to(addrinfo *target_addrinfo, SOCKET *sockd) {
     }
 
     if (p == NULL) {
-        PRINT("socket connect fail\r\n");
+        WRITE("socket connect fail");
         return Sockerr;
     }
 
@@ -76,12 +83,13 @@ error_code reqfile(SOCKET sockd, const netwopts *options) {
     error_code operes;
     packet_t packet = {
             .state_code = Noerr,
-            .data = options->input_path,
+            .data = (char *) options->input_path,
             .data_s = strlen(options->input_path) + 1
     };
+    LOG_FORMAT("request file %s", options->input_path);
 
     if ((operes = send_packet(sockd, &packet)) != Noerr) {
-        PRINT_ERROR("send file name %u", operes);
+        ERR("send file name %u", operes);
         return operes;
     }
 
@@ -91,8 +99,9 @@ error_code reqfile(SOCKET sockd, const netwopts *options) {
     }
 
     if (packet.state_code != Noerr) {
-        PRINT_FORMAT("Error response from server %i\r\n", packet.state_code);
+        WRITE_FORMAT("Error response from server %i", packet.state_code);
     } else {
+        LOG_FORMAT("recived data size: %iu", packet.data_s);
         operes = write_file(options->output_path, packet.data, packet.data_s);
     }
 
