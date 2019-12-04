@@ -27,7 +27,7 @@ extern pid_t CURPID;
 #define PRINT_FORMAT(format_str, ...) printf("%s"format_str"\r\n", GLOBAL_PREFIX, __VA_ARGS__)
 #define PRINT(str) PRINT_FORMAT(str"%s", "")
 
-#define LOG_FORMAT(format_str, ...) fprintf(LOGS, "%i: %s"format_str"\r\n", CURPID, GLOBAL_PREFIX, __VA_ARGS__)
+#define LOG_FORMAT(format_str, ...) fprintf(LOGS, "%lli: %s"format_str"\r\n", CURPID, GLOBAL_PREFIX, __VA_ARGS__)
 #define LOG(str) LOG_FORMAT(str"%s", "")
 
 #define WRITE_FORMAT(str, ...) W(PRINT_FORMAT(str, __VA_ARGS__); LOG_FORMAT(str, __VA_ARGS__))

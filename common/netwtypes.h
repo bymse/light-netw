@@ -4,12 +4,14 @@
 #include "netwbase.h"
 
 typedef enum error_code {
+    Cancerr = -110,
     Logerr = -101,
     Opterr = -100,
     Patherr = -99,
     Filerr = -98,
     Memerr = -97,
-    Packerr = -50,
+    Packerr = -70,
+    Selerr = -50,
     WSAStarterr = -10,
     Addrerr = -9,
     Sockerr = -8,

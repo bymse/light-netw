@@ -4,8 +4,6 @@ error_code bind_to(addrinfo *available_addrs, SOCKET *sockd);
 
 error_code start_listen(SOCKET sockd);
 
-error_code get_connection(SOCKET sockd, SOCKET *incom_sockd);
-
 
 error_code server_process_connection(SOCKET sockd, const netwopts *options);
 
@@ -47,7 +45,7 @@ error_code run_server(const netwopts *options) {
     }
 
     PRINT("waiting for connection...");
-    if ((operes = get_connection(sockd, &income_sockd)) != Noerr) {
+    if ((operes = accept_connect_async(sockd, &income_sockd, 'q')) != Noerr) {
         FINAL_CLEANUP(sockd);
         return operes;
     }
@@ -100,22 +98,8 @@ error_code start_listen(SOCKET sockd) {
         return Listenerr;
     }
 
-    LOG_FORMAT("start listening, socket: %x", sockd);
+    LOG_FORMAT("start listening, socket: %llx", sockd);
 
-    return Noerr;
-}
-
-error_code get_connection(SOCKET sockd, SOCKET *incom_sockd) {
-
-    sockaddr_storage incom_addr;
-    int addr_length = sizeof(sockaddr_storage);
-
-    if ((*incom_sockd = accept(sockd, (struct sockaddr *) &incom_addr, &addr_length)) == INVALID_SOCKET) {
-        WSA_ERR("accept");
-        return Accepterr;
-    }
-
-    print_addr(&incom_addr);
     return Noerr;
 }
 
@@ -142,8 +126,8 @@ error_code dirshare(SOCKET sockd) {
     };
 
     LOG("start dirshare");
-    
-    if ((operes = rcv_packet(sockd, &packet, TRUE)) != Noerr) {
+
+    if ((operes = rcv_packet_async(sockd, &packet, TRUE, 'q')) != Noerr) {
         CLEANUP(&packet);
         return operes;
     }
