@@ -27,10 +27,10 @@ error_code parse_flags(int argc, char *argv[], netwopts *options) {
                 options->port = optarg;
                 break;
             case INPUT_PATH:
-                options->input_path = optarg;
+                options->input_param = optarg;
                 break;
             case OUTPUT_PATH:
-                options->output_path = optarg;
+                options->output_param = optarg;
                 break;
             case LOGS_PATH:
                 options->logs_path = optarg;

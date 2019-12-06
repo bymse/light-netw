@@ -43,8 +43,10 @@ static char const *const run_type_names[_run_type_count] = {
 typedef struct netwopts {
     char *port;
     char *hostname;
-    char *input_path;
-    char *output_path;
+
+    char *input_param;
+    char *output_param;
+
     char *logs_path;
     runtype type;
     int routing; //v4 for IPv4, v6 for IPv6

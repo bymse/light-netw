@@ -16,7 +16,7 @@ error_code run_server(const netwopts *options) {
 
     SET_PREFIX(SERVER_PREFIX);
     logs_init(options->logs_path);
-    if (SetCurrentDirectory((LPCSTR) options->input_path) == 0) {
+    if (SetCurrentDirectory((LPCSTR) options->input_param) == 0) {
         ERR("SetCurrentDirectory %lu", GetLastError());
         return Patherr;
     }
@@ -30,7 +30,7 @@ error_code run_server(const netwopts *options) {
         return operes;
     }
 
-    WRITE_FORMAT("work, port: %s, target dir: %s", options->port, options->input_path);
+    WRITE_FORMAT("work, port: %s, target dir: %s", options->port, options->input_param);
 
     if ((operes = bind_to(target_addrinfo, &sockd)) != Noerr) {
         FINAL_CLEANUP(target_addrinfo, sockd);

@@ -22,7 +22,7 @@ error_code rcv_packet(SOCKET sockd, packet_t *packet, BOOL add_terminator);
 
 error_code rcv_packet_async(SOCKET sockd, packet_t *packet, BOOL add_terminator, char stop_key);
 
-void print_addr(sockaddr_storage *addr);
+void print_addr(const char *phrase, sockaddr_storage *addr);
 
 static inline error_code re_memalloc(char **ptr, size_t size) {
     if ((*ptr = realloc(*ptr, size)) == NULL) {

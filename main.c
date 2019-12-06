@@ -4,9 +4,9 @@
 int main(int argc, char *argv[]) {
     netwopts options = {
             .port = NULL,
-            .input_path = NULL,
+            .input_param = NULL,
             .hostname = NULL,
-            .output_path = NULL,
+            .output_param = NULL,
             .type = Invalid_type,
             .routing = AF_INET
     };

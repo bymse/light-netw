@@ -63,7 +63,7 @@ error_code accept_connect_async(SOCKET sockd, SOCKET *incom_sockd, char stop_key
         return Accepterr;
     }
 
-    print_addr(&incom_addr);
+    print_addr("connection from", &incom_addr);
     return Noerr;
 }
 
@@ -210,19 +210,19 @@ error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
 
     } while (recv_leng > sizeof(buf) / sizeof(buf[0]));
 
-    LOG_FORMAT("recv ending, res-size: %lu for socket %x", *data_size, sockd);
+    LOG_FORMAT("recv ending, res-size: %llu for socket %llux", *data_size, sockd);
 
     return Noerr;
 }
 
 
-void print_addr(sockaddr_storage *addr) {
+void print_addr(const char *phrase, sockaddr_storage *addr) {
     unsigned long name_leng = INET6_ADDRSTRLEN;
     char targ_name[name_leng];
     if (WSAAddressToStringA((struct sockaddr *) addr, sizeof(sockaddr_storage), NULL, targ_name, &name_leng) != 0) {
         WSA_ERR("WSAAddressToStringA");
     } else
-        WRITE_FORMAT("connecting to %s", targ_name);
+        WRITE_FORMAT("%s %s", phrase, targ_name);
 }
 
 
