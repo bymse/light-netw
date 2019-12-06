@@ -1,5 +1,6 @@
 #include "light-netw.h"
 
+
 int main(int argc, char *argv[]) {
     netwopts options = {
             .port = NULL,
@@ -19,13 +20,15 @@ int main(int argc, char *argv[]) {
 
     switch (options.type) {
         case Server_dirshare:
-        case Server_message:
             operes = run_server(&options);
             break;
 
         case Client_filereq:
-        case Client_message:
             operes = run_client(&options);
+            break;
+
+        case Ping:
+            operes = ping(&options);
             break;
 
         case Invalid_type:

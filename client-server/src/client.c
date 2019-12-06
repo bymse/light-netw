@@ -70,8 +70,6 @@ error_code client_process_connection(SOCKET sockd, const netwopts *options) {
         case Client_filereq:
             operes = reqfile(sockd, options);
             break;
-        case Client_message:
-            PRINT("operation not implemented");
         default:
             operes = Opterr;
             break;

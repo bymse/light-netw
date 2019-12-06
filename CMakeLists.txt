@@ -10,7 +10,10 @@ add_library(light-netw.common SHARED
         common/src/netwcleanup.c
         common/src/netwlogging.c)
 
-add_executable(light-netw main.c client-server/src/server.c client-server/src/client.c)
+add_executable(light-netw main.c
+        client-server/src/server.c
+        client-server/src/client.c
+        icmp/netwicmp.c)
 
 target_link_libraries(light-netw.common Ws2_32)
 

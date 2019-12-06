@@ -27,19 +27,16 @@ typedef enum error_code {
 typedef enum run_type {
     Invalid_type,
     Server_dirshare,
-    Server_message,
     Client_filereq,
-    Client_message,
-
+    Ping,
     _run_type_count
 } runtype;
 
 static char const *const run_type_names[_run_type_count] = {
         [Invalid_type] = "i",
         [Server_dirshare] = "sd",
-        [Server_message] = "sm",
         [Client_filereq] = "cf",
-        [Client_message] = "cm",
+        [Ping] = "p"
 };
 
 
