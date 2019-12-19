@@ -9,11 +9,10 @@ runtype get_type(char *name) {
 }
 
 int get_routing(char *input) {
-    if (!strcmp(input, "v4"))
-        return AF_INET;
     if (!strcmp(input, "v6"))
         return AF_INET6;
-    return AF_UNSPEC;
+
+    return AF_INET;
 }
 
 error_code parse_flags(int argc, char *argv[], netwopts *options) {

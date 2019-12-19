@@ -1,6 +1,6 @@
 #include "../netwfcs.h"
 
-u_short Internet_checksum(u_short *data, u_short size) {
+u_short Internet_checksum(const u_short *data, u_short size) {
     unsigned long cksum = 0;
     while (size > 1) {
         cksum += *data++;

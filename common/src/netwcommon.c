@@ -216,7 +216,7 @@ error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
 }
 
 
-void print_addr(const char *phrase, sockaddr_storage *addr) {
+void print_addr(const char *phrase, const sockaddr_storage *addr) {
     unsigned long name_leng = INET6_ADDRSTRLEN;
     char targ_name[name_leng];
     if (WSAAddressToStringA((struct sockaddr *) addr, sizeof(sockaddr_storage), NULL, targ_name, &name_leng) != 0) {

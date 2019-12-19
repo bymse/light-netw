@@ -15,15 +15,16 @@ int main(int argc, char *argv[]) {
         return operes;
     }
 
-    if (options.port == NULL)
-        options.port = DEFAULT_PORT;
-
     switch (options.type) {
         case Server_dirshare:
+            if (options.port == NULL)
+                options.port = DEFAULT_PORT;
             operes = run_server(&options);
             break;
 
         case Client_filereq:
+            if (options.port == NULL)
+                options.port = DEFAULT_PORT;
             operes = run_client(&options);
             break;
 

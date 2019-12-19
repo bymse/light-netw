@@ -3,6 +3,6 @@
 
 #include <_bsd_types.h>
 
-u_short Internet_checksum(u_short *data, u_short size);
+u_short Internet_checksum(const u_short *data, u_short size);
 
 #endif //LIGHT_NETW_NETWFCS_H
