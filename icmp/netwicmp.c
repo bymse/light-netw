@@ -1,79 +1,146 @@
 #include "netwicmp.h"
 
+error_code icmp_init(const netwopts *options, addrinfo **addr, SOCKET *sockd);
+
+
 error_code ping_with4packets(SOCKET sockd, const sockaddr_storage *target);
+
+error_code trace_route(SOCKET sockd, const sockaddr_storage *target, size_t max_hops);
+
 
 error_code send_icmp(SOCKET sockd, const sockaddr_storage *target, u_short identifier, u_short sequence);
 
-error_code rcv_icmp(SOCKET sockd, const sockaddr_storage *target, u_char buf[static IP_ICMP_BUF_SIZE], size_t *size);
+error_code rcv_icmp(SOCKET sockd, sockaddr_storage *source, u_char buf[static IP_ICMP_BUF_SIZE], size_t *size);
 
 
 error_code sendto_raw(SOCKET sockd, const sockaddr_storage *target, const u_char *data, size_t *size);
 
-error_code rcvfrom_raw(SOCKET sockd, const sockaddr_storage *target,
+error_code rcvfrom_raw(SOCKET sockd, sockaddr_storage *source,
                        u_char data[static BUF_SIZE], size_t *size);
 
+static inline int gethops(const char *input) {
+    int res = strtol(input, NULL, 0);
+    return 0 < res && res <= 255 ? res : 30;
+}
 
 //todo union for netwoptions' independent params
+//todo add for ipv6 IPPROTO_ICMPV6
 error_code ping(const netwopts *options) {
-    SET_PREFIX(PING_PREFIX);
+    SET_PREFIX(ICMP_PREFIX);
+    logs_init(options->logs_path);
+
+    addrinfo *target;
+    error_code operes;
+    SOCKET sockd;
+
+    //cleanup in
+    if ((operes = icmp_init(options, &target, &sockd))) {
+        return operes;
+    }
+
+    operes = ping_with4packets(sockd, (const sockaddr_storage *) target->ai_addr);
+    FINAL_CLEANUP(sockd, target);
+    return operes;
+}
+
+error_code tracert(const netwopts *options) {
+    SET_PREFIX(ICMP_PREFIX);
     logs_init(options->logs_path);
 
     addrinfo *target = NULL;
     error_code operes;
-    SOCKET sockd;
+    SOCKET sockd = INVALID_SOCKET;
 
-    if ((operes = netwinit(options, PING_HINTS(options->routing), &target)) != Noerr) {
-        FINAL_CLEANUP((addrinfo *) target);
+    //cleanup in
+    if ((operes = icmp_init(options, &target, &sockd))) {
         return operes;
     }
 
-    //todo add for ipv6 IPPROTO_ICMPV6
-    if ((sockd = socket(options->routing, SOCK_RAW, IPPROTO_ICMP)) == INVALID_SOCKET) {
-        WSA_ERR("socket");
-        FINAL_CLEANUP((addrinfo *) target);
-        return Sockerr;
-    }
-
-
-    operes = ping_with4packets(sockd, (const sockaddr_storage *) target->ai_addr);
-    FINAL_CLEANUP(sockd, (addrinfo *) target);
+    operes = trace_route(sockd, (const sockaddr_storage *) target->ai_addr, gethops(options->input_param));
+    FINAL_CLEANUP(sockd, target);
     return operes;
 }
 
+error_code icmp_init(const netwopts *options, addrinfo **addr, SOCKET *sockd) {
+    error_code operes;
+    if ((operes = netwinit(options, ICMP_HINTS(options->routing), addr)) != Noerr) {
+        FINAL_CLEANUP(*addr);
+        return operes;
+    }
+
+    if ((*sockd = socket(options->routing, SOCK_RAW, IPPROTO_ICMP)) == INVALID_SOCKET) {
+        WSA_ERR("socket");
+        FINAL_CLEANUP(*addr);
+        return Sockerr;
+    }
+
+    return Noerr;
+}
 
 error_code ping_with4packets(SOCKET sockd, const sockaddr_storage *target) {
     error_code operes;
 
     clock_t time_fid = time(NULL);
     u_short identifier = (time_fid >> 16) + time_fid;
-    size_t size = IP_ICMP_BUF_SIZE;
-    u_char buf[IP_ICMP_BUF_SIZE];
+
+    size_t rcvsize = IP_ICMP_BUF_SIZE;
+    u_char rcvbuf[IP_ICMP_BUF_SIZE];
+
+    sockaddr_storage source;
 
     for (int i = 0; i < 4; ++i) {
-        clock_t start = clock();
+
         PRINT_FORMAT("PACKET %i", i + 1);
         print_addr("Sending to", target);
+
+        clock_t start = clock();
         if ((operes = send_icmp(sockd, target, identifier, i + 3)) != Noerr) {
             return operes;
         }
 
-        if ((operes = rcv_icmp(sockd, target, buf, &size)) != Noerr) {
+        if ((operes = rcv_icmp(sockd, &source, rcvbuf, &rcvsize)) != Noerr) {
             return operes;
         }
         clock_t end = clock();
 
-        print_addr("Recived from", target);
-        icmp_header *header = (icmp_header *) (buf + IP_HEADER_SIZE);
-        if (header->Identifier == identifier && header->SequenceNumber == i + 3) {
-            PRINT_FORMAT("Time: %li ms", ((end - start)));
-        } else {
+        print_addr("Recived from", &source);
+
+        icmp_header *header = (icmp_header *) (rcvbuf + IP_HEADER_SIZE);
+        if (header->Type == DestinationUnreach) {
+            PRINT("Destination Unreachable...");
+        } else if (header->Identifier != identifier || header->SequenceNumber != i + 3) {
             PRINT("Invalid packet ids");
         }
 
+        PRINT_FORMAT("Time: %li ms", ((end - start)));
         PRINT("----------");
-
     }
 
+    return Noerr;
+}
+
+error_code trace_route(SOCKET sockd, const sockaddr_storage *target, size_t max_hops) {
+    error_code operes;
+    size_t size = IP_ICMP_BUF_SIZE;
+    u_char buf[IP_ICMP_BUF_SIZE];
+    sockaddr_storage source;
+    for (size_t hop = 0; hop < max_hops; ++hop) {
+        u_int ttl = hop + 1;
+        if (setsockopt(sockd, IPPROTO_IP, IP_TTL, (const char *) &ttl, sizeof(u_int)) == INVALID_SOCKET) {
+            WSA_ERR("setsockopt");
+            return Sockerr;
+        }
+
+        if ((operes = send_icmp(sockd, target, 123, 1)) != Noerr) {
+            return operes;
+        }
+
+        if ((operes = rcv_icmp(sockd, &source, buf, &size)) != Noerr) {
+            return operes;
+        }
+
+        print_addr("Recived from", &source);
+    }
     return Noerr;
 }
 
@@ -101,9 +168,9 @@ error_code send_icmp(SOCKET sockd, const sockaddr_storage *target, u_short ident
     return sendto_raw(sockd, target, data, &size);
 }
 
-error_code rcv_icmp(SOCKET sockd, const sockaddr_storage *target, u_char buf[static IP_ICMP_BUF_SIZE], size_t *size) {
+error_code rcv_icmp(SOCKET sockd, sockaddr_storage *source, u_char buf[static IP_ICMP_BUF_SIZE], size_t *size) {
     error_code operes;
-    if ((operes = rcvfrom_raw(sockd, target, buf, size)) != Noerr) {
+    if ((operes = rcvfrom_raw(sockd, source, buf, size)) != Noerr) {
         return operes;
     }
 
@@ -132,13 +199,13 @@ error_code sendto_raw(SOCKET sockd, const sockaddr_storage *target, const u_char
     return Noerr;
 }
 
-error_code rcvfrom_raw(SOCKET sockd, const sockaddr_storage *target,
+error_code rcvfrom_raw(SOCKET sockd, sockaddr_storage *source,
                        u_char data[static BUF_SIZE], size_t *size) {
 
     int addrsize = sizeof(sockaddr_storage);
     if ((*size = recvfrom(sockd, (char *) data, *size,
                           0,
-                          (struct sockaddr *) target,
+                          (struct sockaddr *) source,
                           &addrsize)) == INVALID_SOCKET) {
         WSA_ERR("recvfrom");
         return Recverr;
@@ -146,4 +213,7 @@ error_code rcvfrom_raw(SOCKET sockd, const sockaddr_storage *target,
 
     return Noerr;
 }
+
+
+
 
