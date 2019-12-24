@@ -49,7 +49,7 @@ error_code getaddr_for(const char *target_addr, const char *port, addrinfo *hint
     return Noerr;
 }
 
-error_code accept_connect_async(SOCKET sockd, SOCKET *incom_sockd, char stop_key) {
+error_code accept_connect_stoppable(SOCKET sockd, SOCKET *incom_sockd, char stop_key) {
     PRINT_FORMAT("Press %c for stop", stop_key);
     error_code operes = wait_read(sockd, (char) tolower(stop_key));
     if (operes != Noerr) {
@@ -125,7 +125,7 @@ error_code rcv_packet(SOCKET sockd, packet_t *packet, BOOL add_terminator) {
     return operes;
 }
 
-inline error_code rcv_packet_async(SOCKET sockd, packet_t *packet, BOOL add_terminator, char stop_key) {
+inline error_code rcv_packet_stoppable(SOCKET sockd, packet_t *packet, BOOL add_terminator, char stop_key) {
     PRINT_FORMAT("Press %c for stop", stop_key);
     error_code operes = wait_read(sockd, (char) tolower(stop_key));
     if (operes == Cancerr) {

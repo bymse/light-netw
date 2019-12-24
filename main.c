@@ -31,12 +31,15 @@ int main(int argc, char *argv[]) {
         case Ping:
             operes = ping(&options);
             break;
-
+        case Tracert:
+            operes = tracert(&options);
+            break;
         case Invalid_type:
         case _run_type_count:
             operes = Opterr;
             PRINT_FORMAT("invalid run type: %i", options.type);
             break;
+
     }
 
     PRINT("");

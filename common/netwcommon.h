@@ -14,13 +14,13 @@
 
 error_code netwinit(const netwopts *options, addrinfo *hints, addrinfo **target_addrinfo);
 
-error_code accept_connect_async(SOCKET sockd, SOCKET *incom_sockd, char stop_key);
+error_code accept_connect_stoppable(SOCKET sockd, SOCKET *incom_sockd, char stop_key);
 
 error_code send_packet(SOCKET sockd, packet_t *packet);
 
 error_code rcv_packet(SOCKET sockd, packet_t *packet, BOOL add_terminator);
 
-error_code rcv_packet_async(SOCKET sockd, packet_t *packet, BOOL add_terminator, char stop_key);
+error_code rcv_packet_stoppable(SOCKET sockd, packet_t *packet, BOOL add_terminator, char stop_key);
 
 void print_addr(const char *phrase, const sockaddr_storage *addr);
 

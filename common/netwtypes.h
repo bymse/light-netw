@@ -29,6 +29,7 @@ typedef enum run_type {
     Server_dirshare,
     Client_filereq,
     Ping,
+    Tracert,
     _run_type_count
 } runtype;
 
@@ -36,7 +37,8 @@ static char const *const run_type_names[_run_type_count] = {
         [Invalid_type] = "i",
         [Server_dirshare] = "sd",
         [Client_filereq] = "cf",
-        [Ping] = "p"
+        [Ping] = "p",
+        [Tracert] = "tr"
 };
 
 

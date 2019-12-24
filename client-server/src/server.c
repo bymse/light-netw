@@ -45,7 +45,7 @@ error_code run_server(const netwopts *options) {
     }
 
     PRINT("waiting for connection...");
-    if ((operes = accept_connect_async(sockd, &income_sockd, 'q')) != Noerr) {
+    if ((operes = accept_connect_stoppable(sockd, &income_sockd, 'q')) != Noerr) {
         FINAL_CLEANUP(sockd);
         return operes;
     }
@@ -127,7 +127,7 @@ error_code dirshare(SOCKET sockd) {
 
     LOG("start dirshare");
 
-    if ((operes = rcv_packet_async(sockd, &packet, TRUE, 'q')) != Noerr) {
+    if ((operes = rcv_packet_stoppable(sockd, &packet, TRUE, 'q')) != Noerr) {
         CLEANUP(&packet);
         return operes;
     }
