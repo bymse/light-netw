@@ -58,8 +58,11 @@ error_code connect_to(addrinfo *target_addrinfo, SOCKET *sockd) {
         return Sockerr;
     }
 
-    print_addr("connecting to", (sockaddr_storage *) p->ai_addr);
+    char addr_str[INET6_ADDRSTRLEN];
+    if (tostr_addr((sockaddr_storage *) p->ai_addr, addr_str) == Noerr)
+        WRITE_FORMAT("connecting to %s", addr_str);
     return Noerr;
+
 }
 
 error_code client_process_connection(SOCKET sockd, const netwopts *options) {

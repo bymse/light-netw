@@ -22,7 +22,7 @@ error_code rcv_packet(SOCKET sockd, packet_t *packet, BOOL add_terminator);
 
 error_code rcv_packet_stoppable(SOCKET sockd, packet_t *packet, BOOL add_terminator, char stop_key);
 
-void print_addr(const char *phrase, const sockaddr_storage *addr);
+error_code tostr_addr(const sockaddr_storage *addr, char addr_str[static INET6_ADDRSTRLEN]);
 
 static inline error_code re_memalloc(char **ptr, size_t size) {
     if ((*ptr = realloc(*ptr, size)) == NULL) {

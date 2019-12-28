@@ -63,7 +63,9 @@ error_code accept_connect_stoppable(SOCKET sockd, SOCKET *incom_sockd, char stop
         return Accepterr;
     }
 
-    print_addr("connection from", &incom_addr);
+    char addr_str[INET6_ADDRSTRLEN];
+    if (tostr_addr(&incom_addr, addr_str) == Noerr)
+        WRITE_FORMAT("connection from %s", addr_str);
     return Noerr;
 }
 
@@ -175,7 +177,7 @@ error_code wait_read(SOCKET sockd, char stop_key) {
                 key.Event.KeyEvent.bKeyDown) {
                 if (tolower(key.Event.KeyEvent.uChar.AsciiChar) == stop_key) {
                     PRINT("stopping");
-                    return Cancerr;;
+                    return Cancerr;
                 } else {
                     PRINT_FORMAT("Press %c for stop", stop_key);
                 }
@@ -190,7 +192,7 @@ error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
     int recv_leng;
     error_code operes;
     do {
-        LOG_FORMAT("recv starting for socket %x", sockd);
+        LOG_FORMAT("recv starting for socket %llux", sockd);
         recv_leng = recv(sockd, buf, sizeof(buf) / sizeof(buf[0]), 0);
         if (recv_leng < 0) {
             WSA_ERR("recv");
@@ -215,18 +217,11 @@ error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
     return Noerr;
 }
 
-
-void print_addr(const char *phrase, const sockaddr_storage *addr) {
+error_code tostr_addr(const sockaddr_storage *addr, char *addr_str) {
     unsigned long name_leng = INET6_ADDRSTRLEN;
-    char targ_name[name_leng];
-    if (WSAAddressToStringA((struct sockaddr *) addr, sizeof(sockaddr_storage), NULL, targ_name, &name_leng) != 0) {
+    if (WSAAddressToString((struct sockaddr *) addr, sizeof(sockaddr_storage), NULL, addr_str, &name_leng) != 0) {
         WSA_ERR("WSAAddressToStringA");
-    } else
-        WRITE_FORMAT("%s %s", phrase, targ_name);
+        return Addrerr;
+    }
+    return Noerr;
 }
-
-
-
-
-
-
