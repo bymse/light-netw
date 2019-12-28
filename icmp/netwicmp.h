@@ -12,13 +12,15 @@
 #define BUF_SIZE 1500u
 #define IP_HEADER_SIZE 20u
 #define ICMP_PAYLOAD 100
-#define IP_ICMP_BUF_SIZE IP_HEADER_SIZE + ICMP_PAYLOAD * 2 + sizeof(icmp_header)
+#define IP_ICMP_BUF_SIZE IP_HEADER_SIZE + ICMP_PAYLOAD * 4 + sizeof(icmp_header)
 
 typedef enum icmp_types {
     EchoReply = 0,
     DestinationUnreach = 3,
+    SourceQuench = 4,
     RedirectMessage = 5
 } icmp_type;
+
 
 #define ICMP_HINTS(routing) &((addrinfo) {  \
             .ai_family = routing,           \
@@ -32,11 +34,11 @@ typedef enum icmp_types {
 })
 
 typedef struct icmp_header {
-    u_char Type;
-    u_char Code;
-    u_short Checksum;
-    u_short Identifier;
-    u_short SequenceNumber;
+    u_char type;
+    u_char code;
+    u_short checksum;
+    u_short identifier;
+    u_short sequence_no;
 } __attribute__((packed)) icmp_header;
 
 error_code ping(const netwopts *options);

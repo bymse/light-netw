@@ -5,6 +5,7 @@
 
 typedef enum error_code {
     Cancerr = -110,
+    Timerr = -102,
     Logerr = -101,
     Opterr = -100,
     Patherr = -99,
