@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
             operes = tracert(&options);
             break;
         case Invalid_type:
-        case _run_type_count:
+        default:
             operes = Opterr;
             PRINT_FORMAT("invalid run type: %i", options.type);
             break;

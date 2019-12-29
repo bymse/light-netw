@@ -4,7 +4,7 @@
 #include "netwbase.h"
 
 typedef enum error_code {
-    Cancerr = -110,
+    Cancelerr = -110,
     Timerr = -102,
     Logerr = -101,
     Opterr = -100,
@@ -13,6 +13,7 @@ typedef enum error_code {
     Memerr = -97,
     Packerr = -70,
     Selerr = -50,
+    Socktimerr = -11,
     WSAStarterr = -10,
     Addrerr = -9,
     Sockerr = -8,
@@ -31,10 +32,9 @@ typedef enum run_type {
     Client_filereq,
     Ping,
     Tracert,
-    _run_type_count
 } runtype;
 
-static char const *const run_type_names[_run_type_count] = {
+static char const *const run_type_names[] = {
         [Invalid_type] = "i",
         [Server_dirshare] = "sd",
         [Client_filereq] = "cf",

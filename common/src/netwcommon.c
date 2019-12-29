@@ -130,7 +130,7 @@ error_code rcv_packet(SOCKET sockd, packet_t *packet, BOOL add_terminator) {
 inline error_code rcv_packet_stoppable(SOCKET sockd, packet_t *packet, BOOL add_terminator, char stop_key) {
     PRINT_FORMAT("Press %c for stop", stop_key);
     error_code operes = wait_read(sockd, (char) tolower(stop_key));
-    if (operes == Cancerr) {
+    if (operes == Cancelerr) {
         return operes;
     }
 
@@ -177,7 +177,7 @@ error_code wait_read(SOCKET sockd, char stop_key) {
                 key.Event.KeyEvent.bKeyDown) {
                 if (tolower(key.Event.KeyEvent.uChar.AsciiChar) == stop_key) {
                     PRINT("stopping");
-                    return Cancerr;
+                    return Cancelerr;
                 } else {
                     PRINT_FORMAT("Press %c for stop", stop_key);
                 }

@@ -1,7 +1,8 @@
 #include "../netwoptions.h"
 
 runtype get_type(char *name) {
-    for (runtype type = 0; type < _run_type_count; type++) {
+    size_t count = sizeof(run_type_names) / sizeof(run_type_names[0]);
+    for (runtype type = 0; type < count; type++) {
         if (!strcmp(name, run_type_names[type]))
             return type;
     }

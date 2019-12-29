@@ -95,6 +95,14 @@ error_code icmp_init(const netwopts *options, addrinfo **addr, SOCKET *sockd) {
         return Sockerr;
     }
 
+    //prevent permament block
+    const u_int timeout = 8000u;
+    if (setsockopt(*sockd, SOL_SOCKET, SO_RCVTIMEO, (const char *) &timeout, sizeof(u_int)) == INVALID_SOCKET) {
+        WSA_ERR("setsockopt");
+        FINAL_CLEANUP(*addr, *sockd);
+        return Sockerr;
+    }
+
     return Noerr;
 }
 
@@ -161,12 +169,6 @@ error_code ping_with4packets(SOCKET sockd, const sockaddr_storage *target) {
 
     clock_t time_fid = time(NULL);
     u_short identifier = (time_fid >> 16) ^time_fid;
-
-    const u_int timeout = 5000u;
-    if (setsockopt(sockd, SOL_SOCKET, SO_RCVTIMEO, (const char *) &timeout, sizeof(u_int)) == INVALID_SOCKET) {
-        WSA_ERR("setsockopt");
-        return Sockerr;
-    }
 
     size_t passed_seq_no;
     for (passed_seq_no = 1; passed_seq_no <= packets_count; ++passed_seq_no) {
@@ -299,10 +301,6 @@ error_code rcvfrom_raw(SOCKET sockd, sockaddr_storage *source,
                           0,
                           (struct sockaddr *) source,
                           &addrsize)) == INVALID_SOCKET) {
-
-        if (WSAGetLastError() == WSAETIMEDOUT) {
-            return Timerr;
-        }
 
         WSA_ERR("recvfrom");
         return Recverr;
