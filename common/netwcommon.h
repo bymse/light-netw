@@ -10,7 +10,8 @@
 #define DEFAULT_PORT "3490"
 #define MAX_PACKET_S 1300
 #define PACKET_HEADERS_SIZE (sizeof(char) + sizeof(char))
-
+#define _TOSTR(val) #val
+#define TOSTR(val) _TOSTR(val)
 
 error_code netwinit(const netwopts *options, addrinfo *hints, addrinfo **target_addrinfo);
 
@@ -23,6 +24,10 @@ error_code rcv_packet(SOCKET sockd, packet_t *packet, BOOL add_terminator);
 error_code rcv_packet_stoppable(SOCKET sockd, packet_t *packet, BOOL add_terminator, char stop_key);
 
 error_code tostr_addr(const sockaddr_storage *addr, char addr_str[static INET6_ADDRSTRLEN]);
+
+error_code waitrcv_charcnl(SOCKET sockd, char stop_key);
+
+error_code waitrcv_timeout(SOCKET sockd, TIMEVAL *timeout);
 
 static inline error_code re_memalloc(char **ptr, size_t size) {
     if ((*ptr = realloc(*ptr, size)) == NULL) {

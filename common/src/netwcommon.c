@@ -8,8 +8,6 @@ error_code getaddr_for(const char *target_addr, const char *port, addrinfo *hint
 
 error_code send_data(SOCKET sockd, char *data, size_t data_leng);
 
-error_code wait_read(SOCKET sockd, char stop_key);
-
 error_code rcv_data(SOCKET sockd, char **data, size_t *data_size);
 
 
@@ -51,7 +49,7 @@ error_code getaddr_for(const char *target_addr, const char *port, addrinfo *hint
 
 error_code accept_connect_stoppable(SOCKET sockd, SOCKET *incom_sockd, char stop_key) {
     PRINT_FORMAT("Press %c for stop", stop_key);
-    error_code operes = wait_read(sockd, (char) tolower(stop_key));
+    error_code operes = waitrcv_charcnl(sockd, (char) tolower(stop_key));
     if (operes != Noerr) {
         return operes;
     }
@@ -129,7 +127,7 @@ error_code rcv_packet(SOCKET sockd, packet_t *packet, BOOL add_terminator) {
 
 inline error_code rcv_packet_stoppable(SOCKET sockd, packet_t *packet, BOOL add_terminator, char stop_key) {
     PRINT_FORMAT("Press %c for stop", stop_key);
-    error_code operes = wait_read(sockd, (char) tolower(stop_key));
+    error_code operes = waitrcv_charcnl(sockd, (char) tolower(stop_key));
     if (operes == Cancelerr) {
         return operes;
     }
@@ -137,53 +135,6 @@ inline error_code rcv_packet_stoppable(SOCKET sockd, packet_t *packet, BOOL add_
     return operes == Noerr
            ? rcv_packet(sockd, packet, add_terminator)
            : operes;
-}
-
-error_code wait_read(SOCKET sockd, char stop_key) {
-    fd_set master;
-    fd_set read_fds;
-    HANDLE input;
-    INPUT_RECORD key;
-    INPUT_RECORD keys[8];
-    u_long records;
-
-    TIMEVAL timeout = {.tv_sec = 0, .tv_usec = 500000};
-
-    FD_ZERO(&master);
-    FD_ZERO(&read_fds);
-    FD_SET(sockd, &master);
-
-    input = GetStdHandle(STD_INPUT_HANDLE);
-
-    //ignored in windows
-    int fdmax = sockd;
-    //cause set can be modif
-
-    while (1) {
-        read_fds = master;
-        if (select(fdmax + 1, &read_fds, NULL, NULL, &timeout) == SOCKET_ERROR) {
-            WSA_ERR("select");
-            return Selerr;
-        }
-
-        if (FD_ISSET(sockd, &read_fds)) {
-            return Noerr;
-        }
-
-        ReadConsoleInput(input, keys, sizeof(keys) / sizeof(keys[0]), &records);
-        for (int index = 0; index < records; index++) {
-            key = keys[index];
-            if (key.EventType == KEY_EVENT &&
-                key.Event.KeyEvent.bKeyDown) {
-                if (tolower(key.Event.KeyEvent.uChar.AsciiChar) == stop_key) {
-                    PRINT("stopping");
-                    return Cancelerr;
-                } else {
-                    PRINT_FORMAT("Press %c for stop", stop_key);
-                }
-            }
-        }
-    }
 }
 
 error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
@@ -224,4 +175,71 @@ error_code tostr_addr(const sockaddr_storage *addr, char *addr_str) {
         return Addrerr;
     }
     return Noerr;
+}
+
+error_code waitrcv_charcnl(SOCKET sockd, char stop_key) {
+    fd_set master;
+    fd_set read_fds;
+    HANDLE input;
+    INPUT_RECORD key;
+    INPUT_RECORD keys[8];
+    u_long records;
+
+    TIMEVAL timeout = {.tv_sec = 0, .tv_usec = 500000};
+
+    FD_ZERO(&master);
+    FD_ZERO(&read_fds);
+    FD_SET(sockd, &master);
+
+    input = GetStdHandle(STD_INPUT_HANDLE);
+
+    //ignored in windows
+    int fdmax = sockd;
+
+    while (1) {
+        read_fds = master;
+        if (select(fdmax + 1, &read_fds, NULL, NULL, &timeout) == SOCKET_ERROR) {
+            WSA_ERR("select");
+            return Selerr;
+        }
+
+        if (FD_ISSET(sockd, &read_fds)) {
+            return Noerr;
+        }
+
+        ReadConsoleInput(input, keys, sizeof(keys) / sizeof(keys[0]), &records);
+        for (int index = 0; index < records; index++) {
+            key = keys[index];
+            if (key.EventType == KEY_EVENT &&
+                key.Event.KeyEvent.bKeyDown) {
+                if (tolower(key.Event.KeyEvent.uChar.AsciiChar) == stop_key) {
+                    PRINT("stopping");
+                    return Cancelerr;
+                } else {
+                    PRINT_FORMAT("Press %c for stop", stop_key);
+                }
+            }
+        }
+    }
+}
+
+error_code waitrcv_timeout(SOCKET sockd, TIMEVAL *timeout) {
+    fd_set read_fds;
+
+    FD_ZERO(&read_fds);
+    FD_SET(sockd, &read_fds);
+
+    //ignored in windows
+    int fdmax = sockd;
+
+    if (select(fdmax + 1, &read_fds, NULL, NULL, timeout) == SOCKET_ERROR) {
+        WSA_ERR("select");
+        return Selerr;
+    }
+
+    if (FD_ISSET(sockd, &read_fds)) {
+        return Noerr;
+    }
+
+    return Timerr;
 }

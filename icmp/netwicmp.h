@@ -6,13 +6,15 @@
 #include "../common/netwcommon.h"
 #include "../common/netwfcs.h"
 
-
 #define ICMP_PREFIX "ICMP"
 
 #define BUF_SIZE 1500u
 #define IP_HEADER_SIZE 20u
 #define ICMP_PAYLOAD 100
 #define IP_ICMP_BUF_SIZE IP_HEADER_SIZE + ICMP_PAYLOAD * 4 + sizeof(icmp_header)
+
+#define RCV_TO_SEC 10
+static TIMEVAL rcvto_val = {.tv_sec = RCV_TO_SEC, .tv_usec = 0};
 
 typedef enum icmp_types {
     EchoReply = 0,

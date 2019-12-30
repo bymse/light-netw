@@ -1,4 +1,5 @@
 #include "netwicmp.h"
+#include "netwicmp_table.c"
 
 error_code icmp_init(const netwopts *options, addrinfo **addr, SOCKET *sockd);
 
@@ -7,8 +8,8 @@ error_code ping_with4packets(SOCKET sockd, const sockaddr_storage *target);
 
 error_code trace_route(SOCKET sockd, const sockaddr_storage *target, size_t max_hops);
 
-
-error_code send_icmp(SOCKET sockd, const sockaddr_storage *target, u_short identifier, u_short sequence);
+error_code send_icmp(SOCKET sockd, const sockaddr_storage *target, u_short identifier, u_short sequence,
+                     icmp_header *sent_header);
 
 error_code rcv_icmp(SOCKET sockd, sockaddr_storage *source, u_char buf[static IP_ICMP_BUF_SIZE], size_t *size);
 
@@ -18,17 +19,13 @@ error_code sendto_raw(SOCKET sockd, const sockaddr_storage *target, const u_char
 error_code rcvfrom_raw(SOCKET sockd, sockaddr_storage *source,
                        u_char data[static BUF_SIZE], size_t *size);
 
-void print_table_row_(size_t sent_no,
-                      const sockaddr_storage *to,
-                      const sockaddr_storage *from,
-                      size_t rcvd_no,
-                      clock_t time_span,
-                      const char *state_str);
 
 static inline int gethops(const char *input) {
     int res = strtol(input, NULL, 0);
     return 0 < res && res <= 255 ? res : 30;
 }
+
+#define RCVD_AFTER_TO 1000
 
 static inline const char *statestr_for(int code) {
     switch (code) {
@@ -37,7 +34,9 @@ static inline const char *statestr_for(int code) {
         case DestinationUnreach:
             return "Destination Unreachable";
         case Timerr:
-            return "Timeout";
+            return "Timeout, over "TOSTR(RCV_TO_SEC)" s";
+        case RCVD_AFTER_TO:
+            return "Recived after timeout";
         default:
             return "Uknown state";
     }
@@ -96,7 +95,7 @@ error_code icmp_init(const netwopts *options, addrinfo **addr, SOCKET *sockd) {
     }
 
     //prevent permament block
-    const u_int timeout = 8000u;
+    const u_int timeout = RCV_TO_SEC * 2 * 1000;
     if (setsockopt(*sockd, SOL_SOCKET, SO_RCVTIMEO, (const char *) &timeout, sizeof(u_int)) == INVALID_SOCKET) {
         WSA_ERR("setsockopt");
         FINAL_CLEANUP(*addr, *sockd);
@@ -106,60 +105,96 @@ error_code icmp_init(const netwopts *options, addrinfo **addr, SOCKET *sockd) {
     return Noerr;
 }
 
-/*
-No. |To              |From            |No. |Time ms|State
-1   |123.456.789.000 |987.765.432.100 |1   |10000  |Destination Unreachable   
- */
-//                          No   To   From No  Tim State
-#define TABLE_COLUMN_FORMAT "%4s|%16s|%16s|%4s|%7s|%s\r\n"
-#define PRINT_TABLE_HEADER() RAW_PRINT("\r\n"TABLE_COLUMN_FORMAT, "No.", "Sent to", "Recived from", "No.", "Time ms", "State")
+enum packet_state {
+    Sent = 0,
+    Recived = 1,
+};
 
-void print_table_row_(size_t sent_no,
-                      const sockaddr_storage *to,
-                      const sockaddr_storage *from,
-                      size_t rcvd_no,
-                      clock_t time_span,
-                      const char *state_str) {
-    char toaddr_str[INET6_ADDRSTRLEN] = {0};
-    char fromaddr_str[INET6_ADDRSTRLEN] = {0};
+typedef struct icmp_transmission_info {
+    icmp_header header;
+    clock_t time;
+    sockaddr_storage addr;
+    enum packet_state state : 1;
+} icmp_transmis;
 
-    if (to != NULL) {
-        tostr_addr(to, toaddr_str);
+void analyze(size_t packets_c, icmp_transmis packets[packets_c]) {
+    int sent_no = -1;
+    int rcvd_no = -1;
+    const sockaddr_storage *to = NULL;
+    const sockaddr_storage *from = NULL;
+    clock_t time_span = -1;
+
+    int state_code = 0;
+
+    PRINT_TABLE_HEADER();
+    for (int index = 0; index < packets_c; ++index) {
+        if (packets[index].state == Sent) {
+            __auto_type sent_packet = packets[index];
+
+            sent_no = sent_packet.header.sequence_no;
+            to = &sent_packet.addr;
+
+            if (index < packets_c - 1) {
+                __auto_type next_packet = packets[index + 1];
+
+
+                if (next_packet.state == Recived
+                    && next_packet.header.sequence_no == sent_packet.header.sequence_no) {
+
+                    rcvd_no = next_packet.header.sequence_no;
+                    from = &next_packet.addr;
+                    time_span = next_packet.time - sent_packet.time;
+                    state_code = next_packet.header.code;
+                    index++;
+                } else state_code = Timerr;
+            }
+        } else if (packets[index].state == Recived) {
+            __auto_type rcvd_packet = packets[index];
+
+            rcvd_no = rcvd_packet.header.sequence_no;
+            from = &rcvd_packet.addr;
+            state_code = rcvd_packet.header.type == 0
+                         ? RCVD_AFTER_TO
+                         : rcvd_packet.header.type;
+
+            for (int back_index = index - 1; back_index >= 0; --back_index) {
+                __auto_type prev_packet = packets[back_index];
+                if (prev_packet.state == Sent &&
+                    prev_packet.header.sequence_no == rcvd_no) {
+
+                    time_span = rcvd_packet.time - prev_packet.time;
+                    break;
+                }
+            }
+
+        } else {
+            WRITE("Invalid packet state");
+            continue;
+        }
+
+        print_table_row(sent_no,
+                        to,
+                        from,
+                        rcvd_no,
+                        time_span,
+                        statestr_for(state_code));
+
+        sent_no = -1;
+        rcvd_no = -1;
+        to = NULL;
+        from = NULL;
+        time_span = -1;
+
+        state_code = 0;
     }
-
-    if (from != NULL) {
-        tostr_addr(from, fromaddr_str);
-    }
-
-    char sent_no_str[3 + 1] = {0};
-    char rcvd_no_str[3 + 1] = {0};
-
-    if (sent_no >= 0) {
-        sprintf(sent_no_str, "%zu", sent_no);
-    }
-
-    if (rcvd_no >= 0) {
-        sprintf(rcvd_no_str, "%zu", rcvd_no);
-    }
-
-    char time_span_str[4 + 1] = {0};
-
-    if (time_span >= 0) {
-        sprintf(time_span_str, "%li", time_span);
-    }
-
-    RAW_PRINT(TABLE_COLUMN_FORMAT, sent_no_str, toaddr_str, fromaddr_str, rcvd_no_str, time_span_str, state_str);
 }
 
 
 error_code ping_with4packets(SOCKET sockd, const sockaddr_storage *target) {
-    const size_t packets_count = 4;
-    struct {
-        clock_t sent_at;
-        clock_t recived_at;
-        icmp_header recived_header;
-        sockaddr_storage source;
-    } recived[packets_count];
+    const int packets_to_sent_count = 4;
+
+    size_t packets_count = 0;
+    icmp_transmis packets[packets_to_sent_count * 2];
 
     error_code operes = Noerr;
     sockaddr_storage source;
@@ -170,12 +205,14 @@ error_code ping_with4packets(SOCKET sockd, const sockaddr_storage *target) {
     clock_t time_fid = time(NULL);
     u_short identifier = (time_fid >> 16) ^time_fid;
 
-    size_t passed_seq_no;
-    for (passed_seq_no = 1; passed_seq_no <= packets_count; ++passed_seq_no) {
+    icmp_header sent_header;
 
-        PRINT_FORMAT("Working with packet %llu", passed_seq_no);
+    int packet_no;
+    for (packet_no = 1; packet_no <= packets_to_sent_count; ++packet_no) {
+
+        PRINT_FORMAT("Working with packet %i", packet_no);
         clock_t start = clock();
-        if ((operes = send_icmp(sockd, target, identifier, passed_seq_no)) != Noerr) {
+        if ((operes = send_icmp(sockd, target, identifier, packet_no, &sent_header)) != Noerr) {
             break;
         }
 
@@ -184,33 +221,26 @@ error_code ping_with4packets(SOCKET sockd, const sockaddr_storage *target) {
         }
         clock_t end = clock();
 
-        icmp_header *header = (icmp_header *) (rcvbuf + IP_HEADER_SIZE);
+        icmp_header *rcvd_header = (icmp_header *) (rcvbuf + IP_HEADER_SIZE);
 
-        recived[passed_seq_no - 1].sent_at = start;
-        recived[passed_seq_no - 1].recived_at = operes == Timerr ? -1 : end;
-        recived[passed_seq_no - 1].recived_header = *header;
-        recived[passed_seq_no - 1].source = source;
+        packets[packets_count].state = Sent;
+        packets[packets_count].time = start;
+        packets[packets_count].header = sent_header;
+        packets[packets_count].addr = *target;
+
+        packets_count++;
+
+        if (operes != Timerr) {
+            packets[packets_count].state = Recived;
+            packets[packets_count].time = end;
+            packets[packets_count].header = *rcvd_header;
+            packets[packets_count].addr = source;
+            packets_count++;
+        }
+
     }
-
-    PRINT_TABLE_HEADER();
-    for (size_t seq_no = 0; seq_no < passed_seq_no - 1; ++seq_no) {
-        __auto_type cur = recived[seq_no];
-        BOOL was_timeout = cur.recived_at < 0;
-
-        clock_t time_span = was_timeout
-                            ? -1
-                            : cur.recived_at - cur.sent_at;
-
-        const char *state = statestr_for(was_timeout ? Timerr : cur.recived_header.type);
-
-        print_table_row_(seq_no + 1,
-                         target,
-                         was_timeout ? NULL : &cur.source,
-                         was_timeout ? -1 : cur.recived_header.sequence_no,
-                         time_span,
-                         state);
-    }
-
+    
+    analyze(packets_count, packets);
     return operes;
 }
 
@@ -227,7 +257,7 @@ error_code trace_route(SOCKET sockd, const sockaddr_storage *target, size_t max_
             return Sockerr;
         }
 
-        if ((operes = send_icmp(sockd, target, 123, 1)) != Noerr) {
+        if ((operes = send_icmp(sockd, target, 123, 1, NULL)) != Noerr) {
             return operes;
         }
 
@@ -238,20 +268,22 @@ error_code trace_route(SOCKET sockd, const sockaddr_storage *target, size_t max_
     return Noerr;
 }
 
-error_code send_icmp(SOCKET sockd, const sockaddr_storage *target, u_short identifier, u_short sequence) {
+error_code send_icmp(SOCKET sockd, const sockaddr_storage *target, u_short identifier, u_short sequence,
+                     icmp_header *sent_header) {
 
     size_t size = sizeof(icmp_header) + ICMP_PAYLOAD;
     u_char data[size];
 
     size_t payload_start = sizeof(icmp_header);
-
-    memcpy(data, &(icmp_header) {
+    icmp_header header_to_sent = {
             .type = 8,
             .code = 0,
             .identifier = identifier,
             .checksum = 0,
             .sequence_no = sequence
-    }, sizeof(icmp_header));
+    };
+
+    memcpy(data, &header_to_sent, sizeof(icmp_header));
 
     for (size_t i = payload_start; i < size; ++i) {
         data[i] = i;
@@ -259,11 +291,18 @@ error_code send_icmp(SOCKET sockd, const sockaddr_storage *target, u_short ident
 
     ((icmp_header *) data)->checksum = Internet_checksum((u_short *) data, size);
 
+    if (sent_header != NULL)
+        *sent_header = header_to_sent;
+
     return sendto_raw(sockd, target, data, &size);
 }
 
 error_code rcv_icmp(SOCKET sockd, sockaddr_storage *source, u_char buf[static IP_ICMP_BUF_SIZE], size_t *size) {
     error_code operes;
+
+    if ((operes = waitrcv_timeout(sockd, &rcvto_val)) != Noerr)
+        return operes;
+
     if ((operes = rcvfrom_raw(sockd, source, buf, size)) != Noerr) {
         return operes;
     }
