@@ -8,7 +8,7 @@
 #include "netwcleanup.h"
 
 #define DEFAULT_PORT "3490"
-#define MAX_PACKET_S 1300
+#define MAX_PACKET_SIZE 1500u
 #define PACKET_HEADERS_SIZE (sizeof(char) + sizeof(char))
 #define _TOSTR(val) #val
 #define TOSTR(val) _TOSTR(val)
@@ -20,6 +20,11 @@ error_code accept_connect_stoppable(SOCKET sockd, SOCKET *incom_sockd, char stop
 error_code send_packet(SOCKET sockd, packet_t *packet);
 
 error_code rcv_packet(SOCKET sockd, packet_t *packet, BOOL add_terminator);
+
+error_code sendto_raw(SOCKET sockd, const sockaddr_storage *target, const u_char *data, size_t *size);
+
+error_code rcvfrom_raw(SOCKET sockd, sockaddr_storage *source,
+                       u_char data[static MAX_PACKET_SIZE], size_t *size);
 
 error_code rcv_packet_stoppable(SOCKET sockd, packet_t *packet, BOOL add_terminator, char stop_key);
 

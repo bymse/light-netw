@@ -8,19 +8,20 @@
 
 #define ICMP_PREFIX "ICMP"
 
-#define BUF_SIZE 1500u
+
 #define IP_HEADER_SIZE 20u
 #define ICMP_PAYLOAD 100
 #define IP_ICMP_BUF_SIZE IP_HEADER_SIZE + ICMP_PAYLOAD * 4 + sizeof(icmp_header)
 
-#define RCV_TO_SEC 10
-static TIMEVAL rcvto_val = {.tv_sec = RCV_TO_SEC, .tv_usec = 0};
+#define RCV_TO_SEC 4
+static TIMEVAL rcvto_val = {.tv_sec = RCV_TO_SEC, .tv_usec = 1000};
 
 typedef enum icmp_types {
     EchoReply = 0,
     DestinationUnreach = 3,
     SourceQuench = 4,
-    RedirectMessage = 5
+    RedirectMessage = 5,
+    EchoRequest = 8
 } icmp_type;
 
 
@@ -42,6 +43,20 @@ typedef struct icmp_header {
     u_short identifier;
     u_short sequence_no;
 } __attribute__((packed)) icmp_header;
+
+enum packet_state {
+    Sent = 0,
+    Recived = 1,
+    Timeout = 2,
+    Error = 3,
+};
+
+typedef struct icmp_transmission_info {
+    icmp_header header;
+    clock_t time;
+    sockaddr_storage addr;
+    enum packet_state state : 2;
+} icmp_transmis;
 
 error_code ping(const netwopts *options);
 

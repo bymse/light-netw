@@ -243,3 +243,31 @@ error_code waitrcv_timeout(SOCKET sockd, TIMEVAL *timeout) {
 
     return Timerr;
 }
+
+error_code sendto_raw(SOCKET sockd, const sockaddr_storage *target, const u_char *data, size_t *size) {
+
+    if ((*size = sendto(sockd, (const char *) data, *size,
+                        0, (const struct sockaddr *) target,
+                        sizeof(sockaddr_storage))) == INVALID_SOCKET) {
+        WSA_ERR("sendto");
+        return Senderr;
+    }
+
+    return Noerr;
+}
+
+error_code rcvfrom_raw(SOCKET sockd, sockaddr_storage *source,
+                       u_char data[static MAX_PACKET_SIZE], size_t *size) {
+
+    int addrsize = sizeof(sockaddr_storage);
+    if ((*size = recvfrom(sockd, (char *) data, *size,
+                          0,
+                          (struct sockaddr *) source,
+                          &addrsize)) == INVALID_SOCKET) {
+
+        WSA_ERR("recvfrom");
+        return Recverr;
+    }
+
+    return Noerr;
+}
