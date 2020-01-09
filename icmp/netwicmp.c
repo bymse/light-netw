@@ -5,7 +5,7 @@ error_code icmp_init(const netwopts *options, addrinfo **addr, SOCKET *sockd);
 
 error_code trace_route(SOCKET sockd, const sockaddr_storage *target, size_t max_hops);
 
-error_code ping_with_count_packets(SOCKET sockd, const sockaddr_storage *target, size_t packets_to_sent_count);
+error_code ping_with4packets(SOCKET sockd, const sockaddr_storage *target);
 
 
 error_code send_icmp_transmis(SOCKET sockd, icmp_transmis *packet);
@@ -17,6 +17,11 @@ error_code send_icmp(SOCKET sockd, const sockaddr_storage *target, icmp_header *
 
 error_code rcv_icmp(SOCKET sockd, sockaddr_storage *source, u_char buf[static IP_ICMP_BUF_SIZE], size_t *size);
 
+u_short uid16() {
+    u_int _rand = rand();
+    clock_t time_fid = time(NULL);
+    return (time_fid >> 8) ^ _rand;
+}
 
 static inline int gethops(const char *input) {
     int res = strtol(input, NULL, 0);
@@ -39,7 +44,7 @@ error_code ping(const netwopts *options) {
     }
 
     PRINT_FORMAT("Let's ping %s", options->hostname);
-    operes = ping_with_count_packets(sockd, (const sockaddr_storage *) target->ai_addr, 4);
+    operes = ping_with4packets(sockd, (const sockaddr_storage *) target->ai_addr);
     FINAL_CLEANUP(sockd, target);
     return operes;
 }
@@ -51,13 +56,18 @@ error_code tracert(const netwopts *options) {
     addrinfo *target = NULL;
     error_code operes;
     SOCKET sockd = INVALID_SOCKET;
+    size_t maxhops = gethops(options->input_param);
 
     //cleanup in
     if ((operes = icmp_init(options, &target, &sockd))) {
         return operes;
     }
 
-    operes = trace_route(sockd, (const sockaddr_storage *) target->ai_addr, gethops(options->input_param));
+    char targetaddr_str[INET6_ADDRSTRLEN] = {0};
+    tostr_addr((const sockaddr_storage *) target->ai_addr, targetaddr_str);
+    PRINT_FORMAT("Trace route to %s [%s], max hops %zu", options->hostname, targetaddr_str, maxhops);
+
+    operes = trace_route(sockd, (const sockaddr_storage *) target->ai_addr, maxhops);
     FINAL_CLEANUP(sockd, target);
     return operes;
 }
@@ -87,19 +97,16 @@ error_code icmp_init(const netwopts *options, addrinfo **addr, SOCKET *sockd) {
 }
 
 
-error_code ping_with_count_packets(SOCKET sockd, const sockaddr_storage *target, size_t packets_to_sent_count) {
+error_code ping_with4packets(SOCKET sockd, const sockaddr_storage *target) {
     error_code operes = Noerr;
 
-    packets_to_sent_count = packets_to_sent_count > 10
-                            ? 10
-                            : packets_to_sent_count;
+    const size_t packets_to_sent_count = 4;
 
     icmp_transmis packets[packets_to_sent_count * 2];
     size_t packets_count = 0;
     size_t to_count = 0;
 
-    clock_t time_fid = time(NULL);
-    u_short identifier = (time_fid >> 16) ^time_fid;
+    u_short identifier = uid16();
 
     int packet_no;
     for (packet_no = 1; packet_no <= packets_to_sent_count; ++packet_no) {
@@ -149,17 +156,65 @@ error_code ping_with_count_packets(SOCKET sockd, const sockaddr_storage *target,
 
 
 error_code trace_route(SOCKET sockd, const sockaddr_storage *target, size_t max_hops) {
-    error_code operes;
-    size_t size = IP_ICMP_BUF_SIZE;
-    u_char buf[IP_ICMP_BUF_SIZE];
-    sockaddr_storage source;
+#define TIME_FORMAT "%8s"
+    error_code operes = Noerr;
+    icmp_transmis rcvd;
+
+    icmp_header header_to_sent = {
+            .identifier = uid16(),
+            .type = EchoRequest,
+            .sequence_no = 0
+    };
+
     for (size_t hop = 0; hop < max_hops; ++hop) {
         u_int ttl = hop + 1;
         if (setsockopt(sockd, IPPROTO_IP, IP_TTL, (const char *) &ttl, sizeof(u_int)) == INVALID_SOCKET) {
             WSA_ERR("setsockopt");
             return Sockerr;
         }
+
+        RAW_PRINT("%3zu", hop + 1);
+        for (int packetno = 0; packetno < 3; ++packetno, header_to_sent.sequence_no++) {
+
+            icmp_transmis to_sent = {
+                    .addr = *target,
+                    .header = header_to_sent
+            };
+
+            if ((operes = send_icmp_transmis(sockd, &to_sent)) != Noerr) {
+                return operes;
+            }
+
+            if ((operes = rcv_icmp_transmis(sockd, &rcvd)) != Noerr && operes != Timerr) {
+                return operes;
+            }
+
+            char time_span_str[12 + 1] = {0};
+            if (operes != Timerr) {
+                clock_t time_span = rcvd.time -= to_sent.time;
+                sprintf(time_span_str, "%li", time_span);
+                RAW_PRINT(TIME_FORMAT
+                                  "ms", time_span_str);
+            } else {
+                RAW_PRINT(TIME_FORMAT
+                                  "  ", "*");
+            }
+
+
+        }
+
+        char fromaddr_str[INET6_ADDRSTRLEN] = {0};
+        tostr_addr(&rcvd.addr, fromaddr_str);
+        RAW_PRINT("%20s\r\n", fromaddr_str);
+
+        if (operes != Timerr && rcvd.header.type == EchoReply) {
+            PRINT("Trace route done");
+            break;
+        }
+
+
     }
+#undef TIME_FORMAT
     return Noerr;
 }
 
@@ -183,6 +238,7 @@ error_code rcv_icmp_transmis(SOCKET sockd, icmp_transmis *packet) {
 
     if ((operes = rcv_icmp(sockd, &(packet->addr), buf, &buf_length)) != Noerr) {
         packet->state = operes == Timerr ? Timeout : Error;
+        packet->time = -1;
         return operes;
     }
 
@@ -232,7 +288,3 @@ error_code rcv_icmp(SOCKET sockd, sockaddr_storage *source, u_char buf[static IP
     }
     return Noerr;
 }
-
-
-
-

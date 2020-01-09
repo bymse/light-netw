@@ -14,6 +14,7 @@ int main(int argc, char *argv[]) {
     if ((operes = parse_flags(argc, argv, &options)) != Noerr) {
         return operes;
     }
+    srand(time(NULL));
 
     switch (options.type) {
         case Server_dirshare:

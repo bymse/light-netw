@@ -8,16 +8,16 @@ No. |To              |From            |No. |Time ms|State
 1   |123.456.789.000 |987.765.432.100 |1   |10000  |Destination Unreachable   
  */
 //                          No   To   From No  Tim State
-#define TABLE_COLUMN_FORMAT "%4s|%16s|%16s|%4s|%12s|%s\r\n"
-#define PRINT_TABLE_HEADER() RAW_PRINT("\r\n"TABLE_COLUMN_FORMAT, "No.", "Sent to", "Recived from", "No.", "Time ms", "State")
+#define PING_TABLE_FORMAT "%4s|%16s|%16s|%4s|%12s|%s\r\n"
+#define PRINT_PING_TABLE_HEADER() RAW_PRINT("\r\n"PING_TABLE_FORMAT, "No.", "Sent to", "Recived from", "No.", "Time ms", "State")
 
 
-void print_table_row(int sent_no,
-                     const sockaddr_storage *to,
-                     const sockaddr_storage *from,
-                     int rcvd_no,
-                     clock_t time_span,
-                     const char *state_str);
+void print_ping_table_row(int sent_no,
+                          const sockaddr_storage *to,
+                          const sockaddr_storage *from,
+                          int rcvd_no,
+                          clock_t time_span,
+                          const char *state_str);
 
 static inline const char *statestr_for(int code) {
     switch (code) {
@@ -43,7 +43,7 @@ void print_ping_table(size_t packets_c, icmp_transmis packets[packets_c]) {
 
     int state_code = 0;
 
-    PRINT_TABLE_HEADER();
+    PRINT_PING_TABLE_HEADER();
     for (int index = 0; index < packets_c; ++index) {
         if (packets[index].state == Sent) {
             __auto_type sent_packet = packets[index];
@@ -89,12 +89,12 @@ void print_ping_table(size_t packets_c, icmp_transmis packets[packets_c]) {
             continue;
         }
 
-        print_table_row(sent_no,
-                        to,
-                        from,
-                        rcvd_no,
-                        time_span,
-                        statestr_for(state_code));
+        print_ping_table_row(sent_no,
+                             to,
+                             from,
+                             rcvd_no,
+                             time_span,
+                             statestr_for(state_code));
 
         sent_no = -1;
         rcvd_no = -1;
@@ -104,12 +104,12 @@ void print_ping_table(size_t packets_c, icmp_transmis packets[packets_c]) {
     }
 }
 
-void print_table_row(int sent_no,
-                     const sockaddr_storage *to,
-                     const sockaddr_storage *from,
-                     int rcvd_no,
-                     clock_t time_span,
-                     const char *state_str) {
+void print_ping_table_row(int sent_no,
+                          const sockaddr_storage *to,
+                          const sockaddr_storage *from,
+                          int rcvd_no,
+                          clock_t time_span,
+                          const char *state_str) {
     char toaddr_str[INET6_ADDRSTRLEN] = {0};
     char fromaddr_str[INET6_ADDRSTRLEN] = {0};
 
@@ -138,5 +138,6 @@ void print_table_row(int sent_no,
         sprintf(time_span_str, "%li", time_span);
     }
 
-    RAW_PRINT(TABLE_COLUMN_FORMAT, sent_no_str, toaddr_str, fromaddr_str, rcvd_no_str, time_span_str, state_str);
+    RAW_PRINT(PING_TABLE_FORMAT, sent_no_str, toaddr_str, fromaddr_str, rcvd_no_str, time_span_str, state_str);
 }
+
