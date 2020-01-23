@@ -4,7 +4,8 @@
 #include "netwbase.h"
 
 typedef enum error_code {
-    Cancerr = -110,
+    Cancelerr = -110,
+    Timerr = -102,
     Logerr = -101,
     Opterr = -100,
     Patherr = -99,
@@ -12,6 +13,7 @@ typedef enum error_code {
     Memerr = -97,
     Packerr = -70,
     Selerr = -50,
+    Socktimerr = -11,
     WSAStarterr = -10,
     Addrerr = -9,
     Sockerr = -8,
@@ -27,27 +29,27 @@ typedef enum error_code {
 typedef enum run_type {
     Invalid_type,
     Server_dirshare,
-    Server_message,
     Client_filereq,
-    Client_message,
-
-    _run_type_count
+    Ping,
+    Tracert,
 } runtype;
 
-static char const *const run_type_names[_run_type_count] = {
+static char const *const run_type_names[] = {
         [Invalid_type] = "i",
         [Server_dirshare] = "sd",
-        [Server_message] = "sm",
         [Client_filereq] = "cf",
-        [Client_message] = "cm",
+        [Ping] = "p",
+        [Tracert] = "tr"
 };
 
 
 typedef struct netwopts {
     char *port;
     char *hostname;
-    char *input_path;
-    char *output_path;
+
+    char *input_param;
+    char *output_param;
+
     char *logs_path;
     runtype type;
     int routing; //v4 for IPv4, v6 for IPv6

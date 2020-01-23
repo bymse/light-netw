@@ -8,9 +8,16 @@ add_library(light-netw.common SHARED
         common/src/netwoptions.c
         common/src/filesys.c
         common/src/netwcleanup.c
-        common/src/netwlogging.c)
+        common/src/netwlogging.c
+        common/src/netwfcs.c
+        common/netwfcs.h)
 
-add_executable(light-netw main.c client-server/src/server.c client-server/src/client.c)
+add_executable(light-netw main.c
+        client-server/src/server.c
+        client-server/src/client.c
+        icmp/netwicmp.c
+        icmp/netwicmp_table.c
+        icmp/netwicmp_table.h)
 
 target_link_libraries(light-netw.common Ws2_32)
 

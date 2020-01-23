@@ -8,8 +8,6 @@ error_code getaddr_for(const char *target_addr, const char *port, addrinfo *hint
 
 error_code send_data(SOCKET sockd, char *data, size_t data_leng);
 
-error_code wait_read(SOCKET sockd, char stop_key);
-
 error_code rcv_data(SOCKET sockd, char **data, size_t *data_size);
 
 
@@ -49,9 +47,9 @@ error_code getaddr_for(const char *target_addr, const char *port, addrinfo *hint
     return Noerr;
 }
 
-error_code accept_connect_async(SOCKET sockd, SOCKET *incom_sockd, char stop_key) {
+error_code accept_connect_stoppable(SOCKET sockd, SOCKET *incom_sockd, char stop_key) {
     PRINT_FORMAT("Press %c for stop", stop_key);
-    error_code operes = wait_read(sockd, (char) tolower(stop_key));
+    error_code operes = waitrcv_charcnl(sockd, (char) tolower(stop_key));
     if (operes != Noerr) {
         return operes;
     }
@@ -63,7 +61,9 @@ error_code accept_connect_async(SOCKET sockd, SOCKET *incom_sockd, char stop_key
         return Accepterr;
     }
 
-    print_addr(&incom_addr);
+    char addr_str[INET6_ADDRSTRLEN];
+    if (tostr_addr(&incom_addr, addr_str) == Noerr)
+        WRITE_FORMAT("connection from %s", addr_str);
     return Noerr;
 }
 
@@ -125,10 +125,10 @@ error_code rcv_packet(SOCKET sockd, packet_t *packet, BOOL add_terminator) {
     return operes;
 }
 
-inline error_code rcv_packet_async(SOCKET sockd, packet_t *packet, BOOL add_terminator, char stop_key) {
+inline error_code rcv_packet_stoppable(SOCKET sockd, packet_t *packet, BOOL add_terminator, char stop_key) {
     PRINT_FORMAT("Press %c for stop", stop_key);
-    error_code operes = wait_read(sockd, (char) tolower(stop_key));
-    if (operes == Cancerr) {
+    error_code operes = waitrcv_charcnl(sockd, (char) tolower(stop_key));
+    if (operes == Cancelerr) {
         return operes;
     }
 
@@ -137,60 +137,13 @@ inline error_code rcv_packet_async(SOCKET sockd, packet_t *packet, BOOL add_term
            : operes;
 }
 
-error_code wait_read(SOCKET sockd, char stop_key) {
-    fd_set master;
-    fd_set read_fds;
-    HANDLE input;
-    INPUT_RECORD key;
-    INPUT_RECORD keys[8];
-    u_long records;
-
-    TIMEVAL timeout = {.tv_sec = 0, .tv_usec = 500000};
-
-    FD_ZERO(&master);
-    FD_ZERO(&read_fds);
-    FD_SET(sockd, &master);
-
-    input = GetStdHandle(STD_INPUT_HANDLE);
-
-    //ignored in windows
-    int fdmax = sockd;
-    //cause set can be modif
-
-    while (1) {
-        read_fds = master;
-        if (select(fdmax + 1, &read_fds, NULL, NULL, &timeout) == SOCKET_ERROR) {
-            WSA_ERR("select");
-            return Selerr;
-        }
-
-        if (FD_ISSET(sockd, &read_fds)) {
-            return Noerr;
-        }
-
-        ReadConsoleInput(input, keys, sizeof(keys) / sizeof(keys[0]), &records);
-        for (int index = 0; index < records; index++) {
-            key = keys[index];
-            if (key.EventType == KEY_EVENT &&
-                key.Event.KeyEvent.bKeyDown) {
-                if (tolower(key.Event.KeyEvent.uChar.AsciiChar) == stop_key) {
-                    PRINT("stopping");
-                    return Cancerr;;
-                } else {
-                    PRINT_FORMAT("Press %c for stop", stop_key);
-                }
-            }
-        }
-    }
-}
-
 error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
     char buf[4096] = {0};
     *data_size = 0;
     int recv_leng;
     error_code operes;
     do {
-        LOG_FORMAT("recv starting for socket %x", sockd);
+        LOG_FORMAT("recv starting for socket %llux", sockd);
         recv_leng = recv(sockd, buf, sizeof(buf) / sizeof(buf[0]), 0);
         if (recv_leng < 0) {
             WSA_ERR("recv");
@@ -210,23 +163,111 @@ error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
 
     } while (recv_leng > sizeof(buf) / sizeof(buf[0]));
 
-    LOG_FORMAT("recv ending, res-size: %lu for socket %x", *data_size, sockd);
+    LOG_FORMAT("recv ending, res-size: %llu for socket %llux", *data_size, sockd);
 
     return Noerr;
 }
 
-
-void print_addr(sockaddr_storage *addr) {
+error_code tostr_addr(const sockaddr_storage *addr, char *addr_str) {
     unsigned long name_leng = INET6_ADDRSTRLEN;
-    char targ_name[name_leng];
-    if (WSAAddressToStringA((struct sockaddr *) addr, sizeof(sockaddr_storage), NULL, targ_name, &name_leng) != 0) {
+    if (WSAAddressToString((struct sockaddr *) addr, sizeof(sockaddr_storage), NULL, addr_str, &name_leng) != 0) {
         WSA_ERR("WSAAddressToStringA");
-    } else
-        WRITE_FORMAT("connecting to %s", targ_name);
+        return Addrerr;
+    }
+    return Noerr;
 }
 
+error_code waitrcv_charcnl(SOCKET sockd, char stop_key) {
+    fd_set master;
+    fd_set read_fds;
+    HANDLE input;
+    INPUT_RECORD key;
+    INPUT_RECORD keys[8];
+    u_long records;
 
+    TIMEVAL timeout = {.tv_sec = 0, .tv_usec = 500000};
 
+    FD_ZERO(&master);
+    FD_ZERO(&read_fds);
+    FD_SET(sockd, &master);
 
+    input = GetStdHandle(STD_INPUT_HANDLE);
 
+    //ignored in windows
+    int fdmax = sockd;
 
+    while (1) {
+        read_fds = master;
+        if (select(fdmax + 1, &read_fds, NULL, NULL, &timeout) == SOCKET_ERROR) {
+            WSA_ERR("select");
+            return Selerr;
+        }
+
+        if (FD_ISSET(sockd, &read_fds)) {
+            return Noerr;
+        }
+
+        ReadConsoleInput(input, keys, sizeof(keys) / sizeof(keys[0]), &records);
+        for (int index = 0; index < records; index++) {
+            key = keys[index];
+            if (key.EventType == KEY_EVENT &&
+                key.Event.KeyEvent.bKeyDown) {
+                if (tolower(key.Event.KeyEvent.uChar.AsciiChar) == stop_key) {
+                    PRINT("stopping");
+                    return Cancelerr;
+                } else {
+                    PRINT_FORMAT("Press %c for stop", stop_key);
+                }
+            }
+        }
+    }
+}
+
+error_code waitrcv_timeout(SOCKET sockd, TIMEVAL *timeout) {
+    fd_set read_fds;
+
+    FD_ZERO(&read_fds);
+    FD_SET(sockd, &read_fds);
+
+    //ignored in windows
+    int fdmax = sockd;
+
+    if (select(fdmax + 1, &read_fds, NULL, NULL, timeout) == SOCKET_ERROR) {
+        WSA_ERR("select");
+        return Selerr;
+    }
+
+    if (FD_ISSET(sockd, &read_fds)) {
+        return Noerr;
+    }
+
+    return Timerr;
+}
+
+error_code sendto_raw(SOCKET sockd, const sockaddr_storage *target, const u_char *data, size_t *size) {
+
+    if ((*size = sendto(sockd, (const char *) data, *size,
+                        0, (const struct sockaddr *) target,
+                        sizeof(sockaddr_storage))) == INVALID_SOCKET) {
+        WSA_ERR("sendto");
+        return Senderr;
+    }
+
+    return Noerr;
+}
+
+error_code rcvfrom_raw(SOCKET sockd, sockaddr_storage *source,
+                       u_char data[static MAX_PACKET_SIZE], size_t *size) {
+
+    int addrsize = sizeof(sockaddr_storage);
+    if ((*size = recvfrom(sockd, (char *) data, *size,
+                          0,
+                          (struct sockaddr *) source,
+                          &addrsize)) == INVALID_SOCKET) {
+
+        WSA_ERR("recvfrom");
+        return Recverr;
+    }
+
+    return Noerr;
+}

@@ -1,11 +1,12 @@
 #include "light-netw.h"
 
+
 int main(int argc, char *argv[]) {
     netwopts options = {
             .port = NULL,
-            .input_path = NULL,
+            .input_param = NULL,
             .hostname = NULL,
-            .output_path = NULL,
+            .output_param = NULL,
             .type = Invalid_type,
             .routing = AF_INET
     };
@@ -13,26 +14,33 @@ int main(int argc, char *argv[]) {
     if ((operes = parse_flags(argc, argv, &options)) != Noerr) {
         return operes;
     }
-
-    if (options.port == NULL)
-        options.port = DEFAULT_PORT;
+    srand(time(NULL));
 
     switch (options.type) {
         case Server_dirshare:
-        case Server_message:
+            if (options.port == NULL)
+                options.port = DEFAULT_PORT;
             operes = run_server(&options);
             break;
 
         case Client_filereq:
-        case Client_message:
+            if (options.port == NULL)
+                options.port = DEFAULT_PORT;
             operes = run_client(&options);
             break;
 
+        case Ping:
+            operes = ping(&options);
+            break;
+        case Tracert:
+            operes = tracert(&options);
+            break;
         case Invalid_type:
-        case _run_type_count:
+        default:
             operes = Opterr;
             PRINT_FORMAT("invalid run type: %i", options.type);
             break;
+
     }
 
     PRINT("");

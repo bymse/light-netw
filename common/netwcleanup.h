@@ -13,7 +13,8 @@ void freemem(char *ptr);
 
 #define BASECLEANUP(cleanme) _Generic((cleanme),                    \
                                         addrinfo*: freeaddrinfo,    \
-                                        char*: free,             \
+                                        char*: free,                \
+                                        u_char*: free,              \
                                         SOCKET: closesocket,        \
                                         packet_t *: freepacket,     \
                                         FILE *: fclose)             \
