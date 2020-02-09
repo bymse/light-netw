@@ -1,8 +1,31 @@
 ## Light network utility
 
-This is a simple cli win-socket utility that can share files using IPv4 (IPv6) + TCP. It was created for educational purposes and for some practice with `C` and `network-programming`. If you have any comments about this project (technical remarks, code quality, etc.) -> contact me via [egorstrelov@gmail.com](mailto:egorstrelov@gmail.com), I'll be glad to discuss them.
+This is a simple cli win-socket utility. It was created for educational purpose and for some practice with `C` and `network-programming`. If you have any comments about this project (technical remarks, code quality, etc.) -> contact me via [egorstrelov@gmail.com](mailto:egorstrelov@gmail.com), I'll be glad to discuss them.
 
-#### How does it work?
+### What can it do?
+
+- Share files using IPv4 (IPv6) + TCP. **!!!DEPRECATED!!!**
+- Tracert and ping
+
+#### Tracert and ping
+
+CLI arguments for *ping*:
+
+```bash
+light-netw -t p -a host.com
+```
+
+And it will *ping* `host.com` with 4 icmp packets.
+
+CLI arguments for *tracert*:
+
+```bash
+light-netw -t tr -a host.com -i 30
+```
+
+And it will *tracert* `host.com` with 30 hops as max.
+
+#### About files sharing **!!!DEPRECATED!!!**
 
 There are two modes : server and client. 
 
