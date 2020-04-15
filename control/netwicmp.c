@@ -168,6 +168,7 @@ error_code trace_route(SOCKET sockd, const sockaddr_storage *target, size_t max_
 
     for (size_t hop = 0; hop < max_hops; ++hop) {
         u_int ttl = hop + 1;
+        BOOL waspcktrcvd = FALSE;
         if (setsockopt(sockd, IPPROTO_IP, IP_TTL, (const char *) &ttl, sizeof(u_int)) == INVALID_SOCKET) {
             WSA_ERR("setsockopt");
             return Sockerr;
@@ -192,12 +193,15 @@ error_code trace_route(SOCKET sockd, const sockaddr_storage *target, size_t max_
             char time_span_str[12 + 1] = {0};
             if (operes != Timerr) {
                 clock_t time_span = rcvd.time -= to_sent.time;
+                waspcktrcvd = TRUE;
                 sprintf(time_span_str, "%li", time_span);
                 RAW_PRINT(TIME_FORMAT
                                   "ms", time_span_str);
             } else {
                 RAW_PRINT(TIME_FORMAT
                                   "  ", "*");
+                if (!waspcktrcvd)
+                    rcvd.addr = (sockaddr_storage) {};
             }
 
 

@@ -171,7 +171,7 @@ error_code rcv_data(SOCKET sockd, char **data, size_t *data_size) {
 error_code tostr_addr(const sockaddr_storage *addr, char *addr_str) {
     unsigned long name_leng = INET6_ADDRSTRLEN;
     if (WSAAddressToString((struct sockaddr *) addr, sizeof(sockaddr_storage), NULL, addr_str, &name_leng) != 0) {
-        WSA_ERR("WSAAddressToStringA");
+        addr_str[0] = '\0';
         return Addrerr;
     }
     return Noerr;
