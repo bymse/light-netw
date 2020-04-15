@@ -15,9 +15,10 @@ add_library(light-netw.common SHARED
 add_executable(light-netw main.c
         client-server/src/server.c
         client-server/src/client.c
-        icmp/netwicmp.c
-        icmp/netwicmp_table.c
-        icmp/netwicmp_table.h)
+        control/netwicmp.c
+        control/netwicmp_table.c
+        control/netwicmp_table.h
+        )
 
 target_link_libraries(light-netw.common Ws2_32)
 

@@ -7,6 +7,6 @@
 #include "client-server/server.h"
 #include "client-server/client.h"
 
-#include "icmp/netwicmp.h"
+#include "control/netwicmp.h"
 
 #endif //NETWORKS_SIMPLENETW_H
