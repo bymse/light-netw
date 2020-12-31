@@ -1,6 +1,6 @@
 ## Light network utility
 
-This is a simple cli win-socket utility. It was created for educational purpose and for some practice with `C` and `network-programming`. If you have any comments about this project (technical remarks, code quality, etc.) -> contact me via [egorstrelov@gmail.com](mailto:egorstrelov@gmail.com), I'll be glad to discuss them.
+This is a simple cli win-socket utility. It was created for educational purpose and for some practice with `C` and `network-programming`. If you have any comments about this project (technical remarks, code quality, etc.) -> contact me via email, I'll be glad to discuss them.
 
 ### What can it do?
 
